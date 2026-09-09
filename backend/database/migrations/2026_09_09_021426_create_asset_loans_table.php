@@ -13,13 +13,12 @@ return new class extends Migration
 {
     Schema::create('asset_loans', function (Blueprint $table) {
         $table->id();
-        $table->foreignId('asset_id')->constrained('assets')->cascadeOnDelete();
-        $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+        $table->foreignId('asset_id')->constrained()->onDelete('cascade');
+        $table->string('borrower_name');
+        $table->string('borrower_email');
         $table->date('loan_date');
-        $table->date('expected_return_date');
-        $table->date('actual_return_date')->nullable();
-        $table->enum('status', ['pending', 'approved', 'rejected', 'returned', 'overdue'])->default('pending');
-        $table->text('notes')->nullable();
+        $table->date('return_date')->nullable();
+        $table->enum('status', ['borrowed', 'returned'])->default('borrowed');
         $table->timestamps();
     });
 }

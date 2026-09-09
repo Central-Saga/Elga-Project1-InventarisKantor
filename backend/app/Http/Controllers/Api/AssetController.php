@@ -20,19 +20,24 @@ class AssetController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'category_id' => 'required|exists:categories,id',
-            'asset_code' => 'required|string|unique:assets,asset_code',
-            'name' => 'required|string|max:255',
-            'brand' => 'nullable|string',
-            'serial_number' => 'nullable|string',
-            'condition' => 'required|in:good,maintenance,damaged',
-            'status' => 'required|in:available,borrowed,disposed',
-            'purchase_date' => 'nullable|date',
+            'asset_code'     => 'required|unique:assets,asset_code',
+            'name'           => 'required|string|max:255',
+            'brand'          => 'nullable|string|max:255',
+            'category_id'    => 'required|exists:categories,id',
+            'condition'      => 'required|string',
+            'status'         => 'required|string',
+            'purchase_date'  => 'nullable|date',
             'purchase_price' => 'nullable|numeric',
         ]);
 
         $asset = Asset::create($validated);
-        return response()->json(['success' => true, 'data' => $asset], 201);
+        $asset->load('category'); // Load relasi kategori untuk dikirim balik ke Next.js
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Aset berhasil ditambahkan!',
+            'data'    => $asset
+        ], 201);
     }
 
     public function show(Asset $asset)
@@ -40,27 +45,37 @@ class AssetController extends Controller
         return response()->json(['success' => true, 'data' => $asset->load('category')]);
     }
 
-    public function update(Request $request, Asset $asset)
+    public function update(Request $request, $id)
     {
+        $asset = Asset::findOrFail($id);
+
         $validated = $request->validate([
-            'category_id' => 'sometimes|exists:categories,id',
-            'asset_code' => 'sometimes|string|unique:assets,asset_code,' . $asset->id,
-            'name' => 'sometimes|string|max:255',
-            'brand' => 'nullable|string',
-            'serial_number' => 'nullable|string',
-            'condition' => 'sometimes|in:good,maintenance,damaged',
-            'status' => 'sometimes|in:available,borrowed,disposed',
-            'purchase_date' => 'nullable|date',
-            'purchase_price' => 'nullable|numeric',
+            'asset_code'     => 'required|unique:assets,asset_code,' . $id,
+            'name'           => 'required|string|max:255',
+            'brand'          => 'nullable|string|max:255',
+            'category_id'    => 'required|exists:categories,id',
+            'condition'      => 'required|string',
+            'status'         => 'required|string',
         ]);
 
         $asset->update($validated);
-        return response()->json(['success' => true, 'data' => $asset]);
+        $asset->load('category');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Aset berhasil diperbarui!',
+            'data'    => $asset
+        ]);
     }
 
-    public function destroy(Asset $asset)
+    public function destroy($id)
     {
+        $asset = Asset::findOrFail($id);
         $asset->delete();
-        return response()->json(['success' => true, 'message' => 'Asset deleted']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Aset berhasil dihapus!'
+        ]);
     }
 }

@@ -1,0 +1,32 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('atk_transactions', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('atk_id')->constrained('atks')->onDelete('cascade');
+            $table->enum('type', ['in', 'out']); // 'in' untuk stok masuk, 'out' untuk permintaan/penggunaan
+            $table->integer('qty');
+            $table->string('recipient_or_supplier')->nullable(); // Nama penerima (jika out) atau supplier (jika in)
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('atk_transactions');
+    }
+};
