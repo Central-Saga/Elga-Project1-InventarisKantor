@@ -11,9 +11,11 @@ class AssetLoan extends Model
 
     protected $fillable = [
         'asset_id',
+        'user_id',
         'borrower_name',
         'loan_date',
         'expected_return_date',
+        'return_date',
         'status',
         'notes',
     ];

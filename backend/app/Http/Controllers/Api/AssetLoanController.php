@@ -21,40 +21,30 @@ class AssetLoanController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'asset_id'    => 'required|exists:assets,id',
-            'borrower_name' => 'required|string|max:255',
-            'loan_date'   => 'required|date',
-            'return_date' => 'nullable|date|after_or_equal:loan_date',
-            'notes'       => 'nullable|string',
-        ]);
+{
+    $validated = $request->validate([
+        'asset_id' => 'required|exists:assets,id',
+        'borrower_name' => 'required|string|max:255',
+        'loan_date' => 'required|date',
+        'expected_return_date' => 'required|date',
+        'notes' => 'nullable|string',
+    ]);
 
-        return DB::transaction(function () use ($validated) {
-            $asset = Asset::findOrFail($validated['asset_id']);
+    $validated['status'] = 'borrowed';
 
-            if ($asset->status !== 'available') {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Aset sedang tidak tersedia untuk dipinjam'
-                ], 400);
-            }
+    $loan = AssetLoan::create($validated);
 
-            // Catat Peminjaman
-            $loan = AssetLoan::create(array_merge($validated, [
-                'status' => 'borrowed'
-            ]));
-
-            // Update status Aset jadi dipinjam
-            $asset->update(['status' => 'borrowed']);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Peminjaman aset berhasil dicatat',
-                'data'    => $loan
-            ], 201);
-        });
+    // Update status aset jadi dipinjam jika ada relasinya
+    $asset = Asset::find($request->asset_id);
+    if ($asset) {
+        $asset->update(['status' => 'borrowed']);
     }
+
+    return response()->json([
+        'message' => 'Peminjaman berhasil disimpan',
+        'data' => $loan
+    ], 201);
+}
 
     public function returnAsset($id)
     {

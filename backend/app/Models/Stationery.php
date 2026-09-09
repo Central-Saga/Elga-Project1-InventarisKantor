@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class StationeryRequest extends Model
+class Stationery extends Model
 {
-    //
+    protected $guarded = [];
 }
