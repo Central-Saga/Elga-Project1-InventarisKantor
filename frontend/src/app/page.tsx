@@ -1,69 +1,129 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import { fetchAPI } from '@/lib/api';
+import Link from 'next/link';
+
+interface Category {
+  id?: number;
+  name?: string;
+}
+
+interface Asset {
+  id: number;
+  asset_code: string;
+  name: string;
+  category?: string | Category | null;
+  status: 'available' | 'borrowed' | 'maintenance';
+}
+
+export default function HomePage() {
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadAssets = async () => {
+    try {
+      const data = await fetchAPI<Asset[]>('assets');
+      setAssets(data);
+    } catch (err: any) {
+      setError(err.message || 'Gagal mengambil data aset.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAssets();
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <main className="max-w-6xl mx-auto p-8">
+      <div className="mb-6 flex justify-between items-center border-b pb-4">
+        <div>
+          <div className="flex gap-4 mb-2">
+            <span className="text-sm font-bold text-blue-600">• Aset Utama</span>
+            <Link href="/atk" className="text-sm text-gray-500 hover:text-blue-600 transition">
+              → Inventaris ATK
+            </Link>
+            <Link href="/loans" className="text-sm text-gray-500 hover:text-blue-600 transition">
+              → Peminjaman Aset
+            </Link>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900">
+            Daftar Aset Utama
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      {error && (
+        <div className="p-4 mb-6 text-red-700 bg-red-100 rounded-lg border border-red-300">
+          {error}
         </div>
-      </main>
-    </div>
+      )}
+
+      <div className="bg-white border rounded-xl shadow-sm overflow-hidden p-6">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr className="bg-gray-50 border-b border-t text-gray-700 uppercase text-xs tracking-wider">
+                <th className="py-3 px-4 font-semibold">Kode Aset</th>
+                <th className="py-3 px-4 font-semibold">Nama Aset</th>
+                <th className="py-3 px-4 font-semibold">Kategori</th>
+                <th className="py-3 px-4 font-semibold">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 text-gray-600">
+              {loading ? (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-gray-500">
+                    Memuat data aset...
+                  </td>
+                </tr>
+              ) : assets.length > 0 ? (
+                assets.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50 transition">
+                    <td className="py-3.5 px-4 font-semibold text-blue-600">
+                      {item.asset_code}
+                    </td>
+                    <td className="py-3.5 px-4 font-medium text-gray-900">
+                      {item.name}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      {typeof item.category === 'object' && item.category !== null
+                        ? item.category.name || '-'
+                        : item.category || '-'}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span
+                        className={`px-2.5 py-1 text-xs rounded-full font-bold ${
+                          item.status === 'available'
+                            ? 'bg-green-100 text-green-800'
+                            : item.status === 'borrowed'
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {item.status === 'available'
+                          ? 'Tersedia'
+                          : item.status === 'borrowed'
+                          ? 'Dipinjam'
+                          : 'Perbaikan'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="text-center py-8 text-gray-500">
+                    Belum ada data aset utama.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
   );
 }
