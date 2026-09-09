@@ -74,21 +74,33 @@ export default function LoansPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+
     try {
-      await fetchAPI('loans', {
+      const response = await fetch('http://127.0.0.1:8000/api/loans', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({
-          asset_id: Number(formData.asset_id),
+          asset_id: formData.asset_id,
           borrower_name: formData.borrower_name,
           loan_date: formData.loan_date,
           expected_return_date: formData.expected_return_date,
           notes: formData.notes,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Gagal menyimpan peminjaman');
+      }
+
+      alert('Peminjaman berhasil disimpan!');
       setIsModalOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(`Gagal menyimpan peminjaman: ${err.message}`);
+    } catch (error: any) {
+      alert(error.message);
     } finally {
       setIsSubmitting(false);
     }
