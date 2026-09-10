@@ -6,7 +6,7 @@ import Link from 'next/link';
 import AtkRequestModal from '@/components/AtkRequestModal';
 
 interface Atk {
-  id: number;
+  id: number; 
   item_code: string;
   name: string;
   unit: string;
@@ -123,6 +123,10 @@ export default function AtkPage() {
 
         <div className="flex gap-3 items-center">
           <AtkRequestModal atks={atks} onSuccess={loadData} />
+
+          <Link href="/atk-requests" className="text-sm text-gray-500 hover:text-emerald-600 transition">
+           → Riwayat Permintaan
+          </Link>
           <button
             onClick={openAddModal}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition shadow-sm text-sm"
