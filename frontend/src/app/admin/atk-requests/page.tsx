@@ -20,8 +20,13 @@ export default function AdminAtkRequestPage() {
 
   const fetchRequests = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/atk-requests', {
-        headers: { 'Accept': 'application/json' },
+      const token = localStorage.getItem('token');
+
+      const res = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', {
+        headers: { 
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       });
       if (!res.ok) throw new Error('Gagal memuat data permintaan ATK');
       const data = await res.json();
@@ -42,9 +47,15 @@ export default function AdminAtkRequestPage() {
     if (!confirm(`Apakah Anda yakin ingin ${actionName} permintaan ATK ini?`)) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/atk-requests/${id}/status`, {
+      const token = localStorage.getItem('token');
+
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/atk-requests/${id}/status`, {
         method: 'PATCH',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        headers: { 
+          'Accept': 'application/json', 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ status }),
       });
 
@@ -57,7 +68,6 @@ export default function AdminAtkRequestPage() {
     }
   };
 
-  // Safe filtering untuk mencegah error toLowerCase dari data null/undefined
   const filteredRequests = requests.filter((req) => {
     const requester = req?.requester_name ?? '';
     const itemName = req?.atk_item_name ?? '';
@@ -73,7 +83,6 @@ export default function AdminAtkRequestPage() {
     <div>
       <Toaster position="top-right" />
 
-      {/* Header Halaman */}
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm gap-4">
         <div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -82,7 +91,6 @@ export default function AdminAtkRequestPage() {
           <p className="text-xs text-slate-500 mt-0.5">Kelola dan verifikasi pengajuan persediaan alat tulis kantor dari karyawan.</p>
         </div>
         
-        {/* Search Bar */}
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
@@ -95,7 +103,6 @@ export default function AdminAtkRequestPage() {
         </div>
       </div>
 
-      {/* Tabel Data Permintaan ATK */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">

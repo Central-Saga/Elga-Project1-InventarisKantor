@@ -19,6 +19,8 @@ class AssetController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menambahkan aset.');
+
         $validated = $request->validate([
             'asset_code'     => 'required|unique:assets,asset_code',
             'name'           => 'required|string|max:255',

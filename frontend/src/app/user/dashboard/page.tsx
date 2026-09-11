@@ -13,26 +13,35 @@ export default function UserDashboardPage() {
   });
   const [loading, setLoading] = useState(true);
 
-  // Simulasi fetch data statistik user (sesuaikan endpoint API Laravel Anda)
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://127.0.0.1:8000/api/user/dashboard-stats', {
-          headers: { 'Accept': 'application/json' },
+        const res = await fetch('http://127.0.0.1:8000/api/v1/loans', {
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
         });
         if (!res.ok) throw new Error('Gagal memuat ringkasan dashboard');
-        const data = await res.json();
-        setStats(data);
+        const response = await res.json();
+        const loans = Array.isArray(response) ? response : response.data || [];
+        setStats({
+          activeLoans: loans.filter((loan: any) => loan.status === 'approved' || loan.status === 'borrowed').length,
+          pendingRequests: loans.filter((loan: any) => loan.status === 'pending').length,
+          totalHistory: loans.length,
+        });
       } catch (err: any) {
-        // Fallback jika API belum ada, gunakan data dummy agar UI tetap cantik
-        setStats({ activeLoans: 2, pendingRequests: 1, totalHistory: 5 });
+        setStats({ activeLoans: 0, pendingRequests: 0, totalHistory: 0 });
       } finally {
         setLoading(false);
       }
     };
 
     fetchDashboardData();
+    const refreshTimer = window.setInterval(fetchDashboardData, 5000);
+
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   return (

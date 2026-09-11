@@ -2,19 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { ArrowLeftRight, CheckCircle2, Clock, Search, UserCheck } from 'lucide-react';
+import { ArrowLeftRight, CheckCircle2, Clock, Search, XCircle } from 'lucide-react';
 
 interface Loan {
   id: number;
   borrower_name: string;
-  asset_id: number;
-  asset?: {
-    name: string;
-    asset_code: string;
-  };
+  asset_name?: string;
   loan_date: string;
-  expected_return_date: string;
-  status: 'borrowed' | 'returned';
+  return_date: string;
+  status: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'returned' | 'late';
 }
 
 export default function AdminLoansPage() {
@@ -24,12 +20,22 @@ export default function AdminLoansPage() {
 
   const fetchLoans = async () => {
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/loans', {
-        headers: { 'Accept': 'application/json' },
+      const token = localStorage.getItem('token');
+
+      const res = await fetch('http://127.0.0.1:8000/api/v1/loans', {
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       });
+
       if (!res.ok) throw new Error('Gagal memuat data peminjaman');
       const data = await res.json();
-      setLoans(Array.isArray(data) ? data : data.data || []);
+      const rawLoans = Array.isArray(data) ? data : data.data || [];
+      setLoans(rawLoans.map((loan: any) => ({
+        ...loan,
+        asset_name: loan.asset?.name || loan.asset_name || `Aset ID: ${loan.asset_id}`,
+      })));
     } catch (err: any) {
       toast.error(err.message || 'Terjadi kesalahan sistem');
     } finally {
@@ -42,12 +48,18 @@ export default function AdminLoansPage() {
   }, []);
 
   const handleReturn = async (id: number) => {
-    if (!confirm('Pastikan fisik aset sudah diperiksa dan diterima kembali dengan baik. Lanjutkan?')) return;
+    if (!confirm('Apakah Anda yakin aset ini sudah dikembalikan?')) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/loans/${id}/return`, {
+      const token = localStorage.getItem('token');
+
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/loans/${id}/return`, {
         method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
       });
 
       if (!res.ok) throw new Error('Gagal memproses pengembalian aset');
@@ -55,29 +67,51 @@ export default function AdminLoansPage() {
       toast.success('Aset berhasil dikembalikan!');
       fetchLoans();
     } catch (err: any) {
-      toast.error(err.message || 'Gagal memproses pengembalian');
+      toast.error(err.message || 'Terjadi kesalahan saat memproses');
     }
   };
 
-  const filteredLoans = loans.filter((loan) =>
-    loan.borrower_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    loan.asset?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleUpdateStatus = async (id: number, status: 'approved' | 'rejected') => {
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/loans/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Gagal memperbarui status permintaan');
+
+      toast.success(status === 'approved' ? 'Permintaan disetujui.' : 'Permintaan ditolak.');
+      fetchLoans();
+    } catch (err: any) {
+      toast.error(err.message || 'Terjadi kesalahan saat memproses permintaan');
+    }
+  };
+
+  const filteredLoans = loans.filter((loan) => {
+    const borrower = loan?.borrower_name ?? '';
+    const asset = loan?.asset_name ?? '';
+    const query = searchTerm.toLowerCase();
+
+    return borrower.toLowerCase().includes(query) || asset.toLowerCase().includes(query);
+  });
 
   return (
     <div>
       <Toaster position="top-right" />
 
-      {/* Header Halaman */}
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm gap-4">
         <div>
           <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <ArrowLeftRight className="text-emerald-600" size={22} /> Manajemen Peminjaman Aset
+            <ArrowLeftRight className="text-indigo-600" size={22} /> Manajemen Peminjaman Aset
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">Kelola sirkulasi peminjaman dan verifikasi pengembalian inventaris kantor.</p>
         </div>
-        
-        {/* Search Bar */}
+
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
@@ -85,12 +119,11 @@ export default function AdminLoansPage() {
             placeholder="Cari peminjam atau aset..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
           />
         </div>
       </div>
 
-      {/* Tabel Data Peminjaman */}
       <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
@@ -112,36 +145,59 @@ export default function AdminLoansPage() {
               ) : filteredLoans.length > 0 ? (
                 filteredLoans.map((loan) => (
                   <tr key={loan.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-4 px-4 font-bold text-slate-900 flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 font-black flex items-center justify-center text-xs shrink-0">
-                        {loan.borrower_name.charAt(0).toUpperCase()}
-                      </div>
-                      {loan.borrower_name}
-                    </td>
+                    <td className="py-4 px-4 font-bold text-slate-900">{loan.borrower_name || 'Tanpa Nama'}</td>
+                    <td className="py-4 px-4 font-bold text-slate-800">{loan.asset_name || 'Aset ID: ' + loan.id}</td>
+                    <td className="py-4 px-4 text-slate-500 font-medium">{loan.loan_date || '-'}</td>
+                    <td className="py-4 px-4 text-slate-500 font-medium">{loan.return_date || '-'}</td>
                     <td className="py-4 px-4">
-                      <p className="font-bold text-slate-800">{loan.asset?.name || 'Aset ID: ' + loan.asset_id}</p>
-                      <span className="text-[10px] text-slate-400 font-mono">{loan.asset?.asset_code || '-'}</span>
-                    </td>
-                    <td className="py-4 px-4 text-slate-600 font-medium">{loan.loan_date}</td>
-                    <td className="py-4 px-4 text-amber-600 font-bold">{loan.expected_return_date}</td>
-                    <td className="py-4 px-4">
-                      {loan.status === 'borrowed' ? (
+                      {loan.status === 'pending' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock size={12} /> Menunggu Persetujuan
+                        </span>
+                      )}
+                      {loan.status === 'approved' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
+                          <CheckCircle2 size={12} /> Disetujui
+                        </span>
+                      )}
+                      {loan.status === 'rejected' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <XCircle size={12} /> Ditolak
+                        </span>
+                      )}
+                      {loan.status === 'borrowed' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                           <Clock size={12} /> Dipinjam
                         </span>
-                      ) : (
+                      )}
+                      {loan.status === 'returned' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                           <CheckCircle2 size={12} /> Dikembalikan
                         </span>
                       )}
                     </td>
                     <td className="py-4 px-4 text-right">
-                      {loan.status === 'borrowed' ? (
+                      {loan.status === 'pending' ? (
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() => handleUpdateStatus(loan.id, 'approved')}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors text-[11px]"
+                          >
+                            Setujui
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(loan.id, 'rejected')}
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-colors text-[11px]"
+                          >
+                            Tolak
+                          </button>
+                        </div>
+                      ) : loan.status === 'borrowed' ? (
                         <button
                           onClick={() => handleReturn(loan.id)}
-                          className="px-3 py-1.5 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-sm text-[11px]"
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors shadow-sm text-[11px]"
                         >
-                          Terima Kembali
+                          Kembalikan
                         </button>
                       ) : (
                         <span className="text-slate-400 font-medium text-[11px]">Selesai</span>

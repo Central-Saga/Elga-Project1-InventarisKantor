@@ -18,6 +18,7 @@ interface LoanItem {
   item_name?: string;
   asset?: { name: string };
   return_date?: string;
+  expected_return_date?: string;
   due_date?: string;
   status?: string;
 }
@@ -37,6 +38,7 @@ export default function AdminDashboardPage() {
   // State untuk Modal Tambah / Input Stok ATK
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
+    item_code: '',
     name: '',
     stock: '',
     unit: 'Pcs',
@@ -47,31 +49,30 @@ export default function AdminDashboardPage() {
   const fetchAdminDashboardData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
 
       // 1. Ambil data Aset
-      const resAssets = await fetch('http://127.0.0.1:8000/api/assets', {
-        headers: { 'Accept': 'application/json' },
-      });
+      const resAssets = await fetch('http://127.0.0.1:8000/api/v1/assets', { headers });
       const dataAssets = resAssets.ok ? await resAssets.json() : [];
       const assetsCount = Array.isArray(dataAssets) ? dataAssets.length : (dataAssets.data?.length || 0);
 
       // 2. Ambil data Master ATK
-      const resAtk = await fetch('http://127.0.0.1:8000/api/atks', {
-        headers: { 'Accept': 'application/json' },
-      });
+      const resAtk = await fetch('http://127.0.0.1:8000/api/v1/atks', { headers });
       const dataAtk = resAtk.ok ? await resAtk.json() : [];
       const atkItems = Array.isArray(dataAtk) ? dataAtk : (dataAtk.data || []);
       setAtkStockList(atkItems);
 
       // 3. Ambil data Peminjaman Aset
-      const resLoans = await fetch('http://127.0.0.1:8000/api/loans', {
-        headers: { 'Accept': 'application/json' },
-      });
+      const resLoans = await fetch('http://127.0.0.1:8000/api/v1/loans', { headers });
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
       const loans = Array.isArray(dataLoans) ? dataLoans : (dataLoans.data || []);
       
       const pendingCount = loans.filter((l: any) => l.status === 'pending').length;
-      const activeLoansList = loans.filter((l: any) => l.status === 'approved' || l.status === 'active');
+      const activeLoansList = loans.filter((l: any) => l.status === 'approved' || l.status === 'borrowed');
 
       setStats({
         totalAssets: assetsCount,
@@ -91,6 +92,9 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     fetchAdminDashboardData();
+    const refreshTimer = window.setInterval(fetchAdminDashboardData, 5000);
+
+    return () => window.clearInterval(refreshTimer);
   }, []);
 
   // Handle Submit Tambah ATK Baru
@@ -103,23 +107,26 @@ export default function AdminDashboardPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch('http://127.0.0.1:8000/api/atks', {
+      const res = await fetch('http://127.0.0.1:8000/api/v1/atks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
+          item_code: formData.item_code,
           name: formData.name,
           stock: Number(formData.stock),
           unit: formData.unit,
+          min_stock: 5,
         }),
       });
 
       if (res.ok) {
         toast.success('Berhasil menambahkan barang ATK baru!');
         setIsModalOpen(false);
-        setFormData({ name: '', stock: '', unit: 'Pcs' });
+        setFormData({ item_code: '', name: '', stock: '', unit: 'Pcs' });
         fetchAdminDashboardData(); // Refresh data dashboard
       } else {
         const errData = await res.json();
@@ -236,7 +243,7 @@ export default function AdminDashboardPage() {
                       <td className="py-3.5 px-3 font-bold text-slate-900">{loan.borrower_name || 'Karyawan'}</td>
                       <td className="py-3.5 px-3 font-medium text-slate-700">{loan.asset?.name || loan.item_name || 'Aset Kantor'}</td>
                       <td className="py-3.5 px-3 font-semibold text-purple-600">
-                        {loan.due_date || loan.return_date || 'Segera'}
+                        {loan.expected_return_date || loan.due_date || loan.return_date || 'Segera'}
                       </td>
                     </tr>
                   ))
@@ -323,6 +330,17 @@ export default function AdminDashboardPage() {
             </div>
 
             <form onSubmit={handleCreateAtk} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Kode ATK</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: ATK-2026-003"
+                  value={formData.item_code}
+                  onChange={(e) => setFormData({ ...formData, item_code: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
+                  required
+                />
+              </div>
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Nama Barang ATK</label>
                 <input

@@ -8,8 +8,15 @@ interface LoanItem {
   id: number;
   item_name?: string;
   type?: string;
-  status?: string;
+  status?: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'returned';
   created_at: string;
+}
+
+interface AssetItem {
+  id: number;
+  name: string;
+  asset_code?: string;
+  status: string;
 }
 
 interface AtkItem {
@@ -19,6 +26,7 @@ interface AtkItem {
 
 export default function UserLoansPage() {
   const [loans, setLoans] = useState<LoanItem[]>([]);
+  const [assetList, setAssetList] = useState<AssetItem[]>([]);
   const [atkList, setAtkList] = useState<AtkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,6 +36,7 @@ export default function UserLoansPage() {
   const [formCategory, setFormCategory] = useState('Asset'); // 'Asset' atau 'ATK'
   const [formBorrowerName, setFormBorrowerName] = useState('');
   const [formAssetId, setFormAssetId] = useState('1');
+  const [expectedReturnDate, setExpectedReturnDate] = useState('');
   const [formAtkId, setFormAtkId] = useState('1'); // ID ATK yang dipilih
   const [formQuantity, setFormQuantity] = useState('1');
   const [formReason, setFormReason] = useState('');
@@ -36,8 +45,13 @@ export default function UserLoansPage() {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const resLoans = await fetch('http://127.0.0.1:8000/api/loans', {
-        headers: { 'Accept': 'application/json' },
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+      const resLoans = await fetch('http://127.0.0.1:8000/api/v1/loans', {
+        headers,
       });
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
       const assetLoans = Array.isArray(dataLoans) ? dataLoans : dataLoans.data || [];
@@ -52,10 +66,15 @@ export default function UserLoansPage() {
 
       setLoans(formattedAssets);
 
+      const resAssets = await fetch('http://127.0.0.1:8000/api/v1/assets', { headers });
+      const dataAssets = resAssets.ok ? await resAssets.json() : [];
+      const rawAssets = Array.isArray(dataAssets) ? dataAssets : dataAssets.data || [];
+      const availableAssets = rawAssets.filter((asset: AssetItem) => asset.status === 'available');
+      setAssetList(availableAssets);
+      if (availableAssets.length > 0) setFormAssetId(String(availableAssets[0].id));
+
       // Ambil daftar master ATK untuk pilihan dropdown
-      const resAtk = await fetch('http://127.0.0.1:8000/api/atks', {
-        headers: { 'Accept': 'application/json' },
-      });
+      const resAtk = await fetch('http://127.0.0.1:8000/api/v1/atks', { headers });
       const dataAtk = resAtk.ok ? await resAtk.json() : [];
       const rawAtkData = Array.isArray(dataAtk) ? dataAtk : dataAtk.data || [];
       setAtkList(rawAtkData);
@@ -83,18 +102,17 @@ export default function UserLoansPage() {
       let payload = {};
 
       if (formCategory === 'Asset') {
-        endpoint = 'http://127.0.0.1:8000/api/loans';
+        endpoint = 'http://127.0.0.1:8000/api/v1/loans';
         payload = {
-          borrower_name: formBorrowerName,
           asset_id: parseInt(formAssetId),
           loan_date: new Date().toISOString().slice(0, 10),
-          reason: formReason,
+          expected_return_date: expectedReturnDate,
+          notes: formReason,
         };
       } else {
         // DI SINI BAGIAN UTAMA YANG DIGANTI: Mengarah ke /api/atk-requests agar tampil di halaman Admin
-        endpoint = 'http://127.0.0.1:8000/api/atk-requests';
+        endpoint = 'http://127.0.0.1:8000/api/v1/atk-requests';
         payload = {
-          borrower_name: formBorrowerName, // Agar nama pemohon muncul di tabel admin
           atk_id: parseInt(formAtkId),
           quantity: parseInt(formQuantity),
           notes: formReason,
@@ -103,7 +121,11 @@ export default function UserLoansPage() {
 
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
         body: JSON.stringify(payload),
       });
 
@@ -117,6 +139,7 @@ export default function UserLoansPage() {
       setIsModalOpen(false);
       setFormBorrowerName('');
       setFormReason('');
+      setExpectedReturnDate('');
       fetchLoans();
     } catch (err: any) {
       toast.error(err.message || 'Terjadi kesalahan sistem');
@@ -248,17 +271,35 @@ export default function UserLoansPage() {
               </div>
 
               {formCategory === 'Asset' ? (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">ID / Nomor Aset</label>
-                  <input
-                    type="number"
-                    required
-                    placeholder="Masukkan ID Aset (contoh: 1)"
-                    value={formAssetId}
-                    onChange={(e) => setFormAssetId(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Pilih Aset</label>
+                    <select
+                      required
+                      value={formAssetId}
+                      onChange={(e) => setFormAssetId(e.target.value)}
+                      disabled={assetList.length === 0}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all disabled:opacity-60"
+                    >
+                      {assetList.length > 0 ? assetList.map((asset) => (
+                        <option key={asset.id} value={asset.id}>
+                          {asset.name} {asset.asset_code ? `(${asset.asset_code})` : ''}
+                        </option>
+                      )) : <option value="">Tidak ada aset tersedia</option>}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">Rencana Tanggal Kembali</label>
+                    <input
+                      type="date"
+                      required
+                      min={new Date().toISOString().slice(0, 10)}
+                      value={expectedReturnDate}
+                      onChange={(e) => setExpectedReturnDate(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600 transition-all"
+                    />
+                  </div>
+                </>
               ) : (
                 <>
                   <div>

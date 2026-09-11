@@ -8,68 +8,57 @@ use Illuminate\Http\Request;
 
 class AtkController extends Controller
 {
+    // Menampilkan daftar seluruh ATK
     public function index()
     {
         $atks = Atk::latest()->get();
         return response()->json([
             'success' => true,
-            'data' => $atks
+            'data'    => $atks
         ]);
     }
 
+    // Input / Menambah ATK baru ke sistem
     public function store(Request $request)
     {
+        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menambahkan ATK.');
+
         $validated = $request->validate([
-            'item_code' => 'required|string|unique:atks,item_code',
-            'name'      => 'required|string',
-            'unit'      => 'required|string',
+            'item_code' => 'required|string|max:255|unique:atks,item_code',
+            'name'      => 'required|string|max:255',
             'stock'     => 'required|integer|min:0',
-            'min_stock' => 'required|integer|min:0',
+            'unit'      => 'required|string|max:50',
+            'min_stock' => 'nullable|integer|min:0',
         ]);
 
         $atk = Atk::create($validated);
 
         return response()->json([
             'success' => true,
-            'message' => 'Data ATK berhasil ditambahkan',
+            'message' => 'ATK baru berhasil ditambahkan.',
             'data'    => $atk
         ], 201);
     }
 
-    public function show(Atk $atk)
+    // Menambah stok ATK yang sudah ada
+    public function addStock(Request $request, $id)
     {
-        return response()->json([
-            'success' => true,
-            'data'    => $atk
-        ]);
-    }
+        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menambah stok ATK.');
 
-    public function update(Request $request, Atk $atk)
-    {
         $validated = $request->validate([
-            'item_code' => 'required|string|unique:atks,item_code,' . $atk->id,
-            'name'      => 'required|string',
-            'unit'      => 'required|string',
-            'stock'     => 'required|integer|min:0',
-            'min_stock' => 'required|integer|min:0',
+            'additional_stock' => 'required|integer|min:1',
         ]);
 
-        $atk->update($validated);
+        $atk = Atk::findOrFail($id);
+        
+        // Tambahkan stok lama dengan stok tambahan
+        $atk->stock += $validated['additional_stock'];
+        $atk->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Data ATK berhasil diubah',
+            'message' => 'Stok ATK berhasil ditambahkan.',
             'data'    => $atk
-        ]);
-    }
-
-    public function destroy(Atk $atk)
-    {
-        $atk->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Data ATK berhasil dihapus'
         ]);
     }
 }
