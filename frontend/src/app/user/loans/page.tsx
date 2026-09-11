@@ -2,15 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { ShoppingCart, Plus, Clock, CheckCircle2, XCircle, Search, Tag, Calendar } from 'lucide-react';
+import { ShoppingCart, Plus, Clock, CheckCircle2, XCircle, Search, Tag, Calendar, ArrowLeft, RotateCcw } from 'lucide-react';
+import Link from 'next/link';
 
 interface LoanItem {
   id: number;
   item_name?: string;
   type?: string;
-  status?: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'returned';
+  status?: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'return_requested' | 'returned';
   created_at: string;
+  expected_return_date?: string;
 }
+
+type LoanFilter = 'active' | 'pending' | 'history' | '';
 
 interface AssetItem {
   id: number;
@@ -30,6 +34,7 @@ export default function UserLoansPage() {
   const [atkList, setAtkList] = useState<AtkItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loanFilter, setLoanFilter] = useState<LoanFilter>('');
 
   // State Modal Pengajuan Baru
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -62,9 +67,22 @@ export default function UserLoansPage() {
         type: 'Asset',
         status: item.status || 'pending',
         created_at: item.created_at ? item.created_at.slice(0, 10) : 'Baru saja',
+        expected_return_date: item.expected_return_date || '-',
       }));
 
-      setLoans(formattedAssets);
+      const resAtkRequests = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', { headers });
+      const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
+      const atkRequests = Array.isArray(dataAtkRequests) ? dataAtkRequests : dataAtkRequests.data || [];
+      const formattedAtkRequests = atkRequests.map((item: any) => ({
+        id: `atk-${item.id}`,
+        item_name: item.atk?.name || `ATK ID: ${item.atk_id}`,
+        type: 'ATK',
+        status: item.status || 'pending',
+        created_at: item.created_at ? item.created_at.slice(0, 10) : 'Baru saja',
+        expected_return_date: '-',
+      }));
+
+      setLoans([...formattedAssets, ...formattedAtkRequests]);
 
       const resAssets = await fetch('http://127.0.0.1:8000/api/v1/assets', { headers });
       const dataAssets = resAssets.ok ? await resAssets.json() : [];
@@ -91,6 +109,10 @@ export default function UserLoansPage() {
   };
 
   useEffect(() => {
+    const filter = new URLSearchParams(window.location.search).get('filter');
+    if (filter === 'active' || filter === 'pending' || filter === 'history') {
+      setLoanFilter(filter);
+    }
     fetchLoans();
   }, []);
 
@@ -146,9 +168,36 @@ export default function UserLoansPage() {
     }
   };
 
-  const filteredLoans = loans.filter((item) =>
-    (item.item_name || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleReturnAsset = async (loan: LoanItem) => {
+    if (!confirm(`Ajukan pengembalian aset "${loan.item_name}" kepada admin?`)) return;
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/v1/loans/${loan.id}/return-request`, {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Gagal mengembalikan aset');
+
+      toast.success('Pengajuan pengembalian dikirim ke admin.');
+      fetchLoans();
+    } catch (err: any) {
+      toast.error(err.message || 'Terjadi kesalahan saat mengembalikan aset');
+    }
+  };
+
+  const filteredLoans = loans.filter((item) => {
+    const matchesSearch = (item.item_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = loanFilter === 'active'
+      ? item.type === 'Asset' && (item.status === 'approved' || item.status === 'borrowed')
+      : loanFilter === 'pending'
+        ? item.status === 'pending'
+        : true;
+    return matchesSearch && matchesFilter;
+  });
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 bg-slate-50/50 min-h-screen">
@@ -161,6 +210,11 @@ export default function UserLoansPage() {
             <ShoppingCart className="text-purple-600" size={22} /> Riwayat Peminjaman & ATK
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">Daftar barang kantor yang sedang Anda ajukan atau pinjam.</p>
+          {loanFilter && (
+            <Link href="/user/loans" className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-bold text-purple-600 hover:text-purple-800">
+              <ArrowLeft size={13} /> Tampilkan semua riwayat
+            </Link>
+          )}
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
@@ -193,12 +247,14 @@ export default function UserLoansPage() {
                 <th className="py-4 px-4">Nama Barang / Aset</th>
                 <th className="py-4 px-4">Jenis</th>
                 <th className="py-4 px-4">Tanggal Pengajuan</th>
+                <th className="py-4 px-4">Rencana Kembali</th>
                 <th className="py-4 px-4">Status Persetujuan</th>
+                <th className="py-4 px-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={4} className="text-center py-10 text-slate-400">Memuat data riwayat...</td></tr>
+                <tr><td colSpan={6} className="text-center py-10 text-slate-400">Memuat data riwayat...</td></tr>
               ) : filteredLoans.length > 0 ? (
                 filteredLoans.map((loan) => (
                   <tr key={loan.id} className="hover:bg-slate-50/50 transition-colors">
@@ -211,6 +267,7 @@ export default function UserLoansPage() {
                     <td className="py-4 px-4 text-slate-600 font-medium flex items-center gap-1.5 pt-4.5">
                       <Calendar size={13} className="text-slate-400" /> {loan.created_at}
                     </td>
+                    <td className="py-4 px-4 text-slate-600 font-medium">{loan.expected_return_date || '-'}</td>
                     <td className="py-4 px-4">
                       {loan.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -227,11 +284,28 @@ export default function UserLoansPage() {
                           <XCircle size={12} /> Ditolak
                         </span>
                       )}
+                      {loan.status === 'return_requested' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <Clock size={12} /> Menunggu Konfirmasi Pengembalian
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      {loan.type === 'Asset' && (loan.status === 'approved' || loan.status === 'borrowed') ? (
+                        <button
+                          onClick={() => handleReturnAsset(loan)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-bold transition-colors"
+                        >
+                          <RotateCcw size={13} /> Ajukan Pengembalian
+                        </button>
+                      ) : (
+                        <span className="text-slate-300">-</span>
+                      )}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={4} className="text-center py-10 text-slate-400">Belum ada riwayat pengajuan barang.</td></tr>
+                <tr><td colSpan={6} className="text-center py-10 text-slate-400">Belum ada riwayat pengajuan barang.</td></tr>
               )}
             </tbody>
           </table>

@@ -35,6 +35,7 @@ Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::get('/loans', [AssetLoanController::class, 'index']);
     Route::post('/loans', [AssetLoanController::class, 'store']);
     Route::patch('/loans/{id}/status', [AssetLoanController::class, 'updateStatus']);
+    Route::post('/loans/{id}/return-request', [AssetLoanController::class, 'requestReturn']);
     Route::post('/loans/{id}/return', [AssetLoanController::class, 'returnAsset']);
 
     Route::get('atk-transactions', [AtkTransactionController::class, 'index']);

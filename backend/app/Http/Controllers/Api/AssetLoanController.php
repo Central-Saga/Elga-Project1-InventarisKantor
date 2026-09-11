@@ -89,30 +89,62 @@ class AssetLoanController extends Controller
         });
     }
 
+    public function requestReturn($id)
+    {
+        return DB::transaction(function () use ($id) {
+            $loan = AssetLoan::with('asset')->lockForUpdate()->findOrFail($id);
+
+            abort_unless(
+                Auth::user()->role !== 'admin' && $loan->user_id === Auth::id(),
+                403,
+                'Hanya peminjam yang dapat mengajukan pengembalian.'
+            );
+
+            if (! in_array($loan->status, ['approved', 'borrowed'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Pengajuan pengembalian tidak dapat dibuat untuk status ini.'
+                ], 422);
+            }
+
+            $loan->update(['status' => 'return_requested']);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pengajuan pengembalian dikirim. Menunggu konfirmasi admin.',
+                'data' => $loan->fresh(['asset', 'user'])
+            ]);
+        });
+    }
+
     public function returnAsset($id)
     {
-        $loan = AssetLoan::findOrFail($id);
+        abort_unless(Auth::user()->role === 'admin', 403, 'Hanya admin yang dapat mengonfirmasi pengembalian.');
 
-        if ($loan->status === 'returned') {
+        return DB::transaction(function () use ($id) {
+            $loan = AssetLoan::with('asset')->lockForUpdate()->findOrFail($id);
+
+            if (! in_array($loan->status, ['approved', 'borrowed', 'return_requested'], true)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Hanya aset yang sedang dipinjam yang dapat dikembalikan.'
+                ], 422);
+            }
+
+            $loan->update([
+                'status'      => 'returned',
+                'return_date' => now()->format('Y-m-d'),
+            ]);
+
+            if ($loan->asset) {
+                $loan->asset->update(['status' => 'available']);
+            }
+
             return response()->json([
-                'success' => false,
-                'message' => 'Aset ini sudah dikembalikan sebelumnya.'
-            ], 422);
-        }
-
-        $loan->update([
-            'status'      => 'returned',
-            'return_date' => now()->format('Y-m-d'),
-        ]);
-
-        if ($loan->asset) {
-            $loan->asset->update(['status' => 'available']);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Aset berhasil dikembalikan.',
-            'data'    => $loan
-        ]);
+                'success' => true,
+                'message' => 'Aset berhasil dikembalikan.',
+                'data'    => $loan->fresh(['asset', 'user'])
+            ]);
+        });
     }
 }

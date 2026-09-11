@@ -9,8 +9,9 @@ interface Loan {
   borrower_name: string;
   asset_name?: string;
   loan_date: string;
-  return_date: string;
-  status: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'returned' | 'late';
+  expected_return_date?: string;
+  return_date?: string;
+  status: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'return_requested' | 'returned' | 'late';
 }
 
 export default function AdminLoansPage() {
@@ -148,7 +149,7 @@ export default function AdminLoansPage() {
                     <td className="py-4 px-4 font-bold text-slate-900">{loan.borrower_name || 'Tanpa Nama'}</td>
                     <td className="py-4 px-4 font-bold text-slate-800">{loan.asset_name || 'Aset ID: ' + loan.id}</td>
                     <td className="py-4 px-4 text-slate-500 font-medium">{loan.loan_date || '-'}</td>
-                    <td className="py-4 px-4 text-slate-500 font-medium">{loan.return_date || '-'}</td>
+                    <td className="py-4 px-4 text-slate-500 font-medium">{loan.expected_return_date || loan.return_date || '-'}</td>
                     <td className="py-4 px-4">
                       {loan.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -168,6 +169,11 @@ export default function AdminLoansPage() {
                       {loan.status === 'borrowed' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                           <Clock size={12} /> Dipinjam
+                        </span>
+                      )}
+                      {loan.status === 'return_requested' && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          <Clock size={12} /> Menunggu Konfirmasi Pengembalian
                         </span>
                       )}
                       {loan.status === 'returned' && (
@@ -192,12 +198,12 @@ export default function AdminLoansPage() {
                             Tolak
                           </button>
                         </div>
-                      ) : loan.status === 'borrowed' ? (
+                      ) : loan.status === 'borrowed' || loan.status === 'approved' || loan.status === 'return_requested' ? (
                         <button
                           onClick={() => handleReturn(loan.id)}
                           className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors shadow-sm text-[11px]"
                         >
-                          Kembalikan
+                          {loan.status === 'return_requested' ? 'Konfirmasi Pengembalian' : 'Kembalikan'}
                         </button>
                       ) : (
                         <span className="text-slate-400 font-medium text-[11px]">Selesai</span>

@@ -6,7 +6,10 @@ import { CheckCircle2, Clock, FileText, Search, XCircle } from 'lucide-react';
 
 interface AtkRequest {
   id: number;
-  requester_name: string;
+  borrower_name?: string;
+  requester_name?: string;
+  atk_id: number;
+  atk?: { name?: string };
   atk_item_name?: string;
   quantity: number;
   status: 'pending' | 'approved' | 'rejected';
@@ -69,8 +72,8 @@ export default function AdminAtkRequestPage() {
   };
 
   const filteredRequests = requests.filter((req) => {
-    const requester = req?.requester_name ?? '';
-    const itemName = req?.atk_item_name ?? '';
+    const requester = req?.borrower_name ?? req?.requester_name ?? '';
+    const itemName = req?.atk?.name ?? req?.atk_item_name ?? '';
     const query = searchTerm.toLowerCase();
 
     return (
@@ -126,12 +129,12 @@ export default function AdminAtkRequestPage() {
                   <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-4 font-bold text-slate-900 flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 font-black flex items-center justify-center text-xs shrink-0">
-                        {req.requester_name ? req.requester_name.charAt(0).toUpperCase() : '?'}
+                        {(req.borrower_name || req.requester_name) ? (req.borrower_name || req.requester_name)?.charAt(0).toUpperCase() : '?'}
                       </div>
-                      {req.requester_name || 'Tanpa Nama'}
+                      {req.borrower_name || req.requester_name || 'Tanpa Nama'}
                     </td>
                     <td className="py-4 px-4 font-bold text-slate-800">
-                      {req.atk_item_name || 'Item ATK ID: ' + req.id}
+                      {req.atk?.name || req.atk_item_name || 'Item ATK ID: ' + req.atk_id}
                     </td>
                     <td className="py-4 px-4 font-extrabold text-slate-700">
                       {req.quantity} <span className="text-[10px] text-slate-400 font-normal">Pcs</span>

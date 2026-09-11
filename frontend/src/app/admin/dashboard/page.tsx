@@ -70,8 +70,14 @@ export default function AdminDashboardPage() {
       const resLoans = await fetch('http://127.0.0.1:8000/api/v1/loans', { headers });
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
       const loans = Array.isArray(dataLoans) ? dataLoans : (dataLoans.data || []);
+
+      // Pengajuan pending mencakup peminjaman aset dan permintaan ATK.
+      const resAtkRequests = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', { headers });
+      const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
+      const atkRequests = Array.isArray(dataAtkRequests) ? dataAtkRequests : (dataAtkRequests.data || []);
       
-      const pendingCount = loans.filter((l: any) => l.status === 'pending').length;
+      const pendingCount = loans.filter((l: any) => l.status === 'pending').length
+        + atkRequests.filter((request: any) => request.status === 'pending').length;
       const activeLoansList = loans.filter((l: any) => l.status === 'approved' || l.status === 'borrowed');
 
       setStats({
