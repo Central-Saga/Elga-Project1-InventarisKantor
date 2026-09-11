@@ -1,0 +1,16 @@
+# Local environment and credentials
+.env*
+!.env.example
+*.env
+
+# Local certificate bundles
+cacert.pem
+
+# Frontend generated files
+frontend/.next/
+frontend/node_modules/
+
+# Editor and OS files
+.vscode/
+.DS_Store
+Thumbs.db
