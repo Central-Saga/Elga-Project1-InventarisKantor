@@ -2,6 +2,7 @@
 
   import { useState } from 'react';
   import { fetchAPI } from '@/lib/api';
+  import { getErrorMessage } from '@/lib/schemas';
 
   interface Atk {
     id: number;
@@ -51,8 +52,8 @@
         setIsOpen(false);
         setFormData({ borrower_name: '',atk_id: '', requester_name: '', quantity: 1, notes: '' });
         onSuccess();
-      } catch (err: any) {
-        alert(`Gagal mengajukan: ${err.message}`);
+      } catch (err: unknown) {
+        alert(`Gagal mengajukan: ${getErrorMessage(err)}`);
       } finally {
         setIsSubmitting(false);
       }

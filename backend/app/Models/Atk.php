@@ -18,6 +18,14 @@ class Atk extends Model
         'min_stock',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'stock' => 'integer',
+            'min_stock' => 'integer',
+        ];
+    }
+
     public function transactions()
     {
         return $this->hasMany(AtkTransaction::class);

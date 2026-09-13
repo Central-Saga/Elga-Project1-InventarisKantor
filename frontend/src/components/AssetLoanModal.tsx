@@ -2,16 +2,10 @@
 
 import { useState } from 'react';
 import { fetchAPI } from '@/lib/api';
-
-interface Asset {
-  id: number;
-  asset_code: string;
-  name: string;
-  status: string;
-}
+import { assetLoanSchema, getErrorMessage, type AssetSummary } from '@/lib/schemas';
 
 interface Props {
-  assets: Asset[];
+  assets: AssetSummary[];
   onSuccess: () => void;
 }
 
@@ -22,6 +16,7 @@ export default function AssetLoanModal({ assets, onSuccess }: Props) {
     asset_id: '',
     borrower_name: '',
     loan_date: new Date().toISOString().split('T')[0],
+    expected_return_date: new Date(new Date().getTime() + 86400000).toISOString().split('T')[0],
     notes: '',
   });
 
@@ -35,15 +30,25 @@ export default function AssetLoanModal({ assets, onSuccess }: Props) {
       return;
     }
 
+    if (isSubmitting) return;
+
+    const result = assetLoanSchema.safeParse({
+      asset_id: Number(formData.asset_id),
+      loan_date: formData.loan_date,
+      expected_return_date: formData.expected_return_date,
+      notes: formData.notes || undefined,
+    });
+    if (!result.success) {
+      alert(result.error.issues[0]?.message ?? 'Data peminjaman tidak valid.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await fetchAPI('loans', {
         method: 'POST',
         body: JSON.stringify({
-          asset_id: Number(formData.asset_id),
-          borrower_name: formData.borrower_name,
-          loan_date: formData.loan_date,
-          notes: formData.notes,
+          ...result.data,
         }),
       });
 
@@ -53,11 +58,12 @@ export default function AssetLoanModal({ assets, onSuccess }: Props) {
         asset_id: '',
         borrower_name: '',
         loan_date: new Date().toISOString().split('T')[0],
+        expected_return_date: new Date(new Date().getTime() + 86400000).toISOString().split('T')[0],
         notes: '',
       });
       onSuccess();
-    } catch (err: any) {
-      alert(`Gagal meminjam: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Gagal meminjam: ${getErrorMessage(err)}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -80,6 +86,21 @@ export default function AssetLoanModal({ assets, onSuccess }: Props) {
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                  Perkiraan Tanggal Kembali
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={formData.expected_return_date}
+                  onChange={(e) =>
+                    setFormData({ ...formData, expected_return_date: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                   Nama Peminjam

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Toaster, toast } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 import { Boxes, FileText, Clock, CheckCircle2, ArrowRight, ShieldAlert, PlusCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { formatDate } from '@/lib/schemas';
 
 interface DueSoonLoan {
   id: number;
@@ -33,7 +34,7 @@ export default function UserDashboardPage() {
         });
         if (!res.ok) throw new Error('Gagal memuat ringkasan dashboard');
         const response = await res.json();
-        const loans = Array.isArray(response) ? response : response.data || [];
+        const loans: Array<{ id: number; status?: string; expected_return_date?: string; asset_id?: number; asset?: { name?: string } }> = Array.isArray(response) ? response : response.data || [];
         const atkRes = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', {
           headers: {
             'Accept': 'application/json',
@@ -42,31 +43,33 @@ export default function UserDashboardPage() {
         });
         if (!atkRes.ok) throw new Error('Gagal memuat pengajuan ATK');
         const atkResponse = await atkRes.json();
-        const atkRequests = Array.isArray(atkResponse) ? atkResponse : atkResponse.data || [];
+        const atkRequests: Array<{ status?: string }> = Array.isArray(atkResponse) ? atkResponse : atkResponse.data || [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const upcomingLoans = loans.flatMap((loan: any) => {
-          if (!['approved', 'borrowed'].includes(loan.status) || !loan.expected_return_date) return [];
+        const upcomingLoans = loans.flatMap((loan) => {
+          if ((loan.status !== 'approved' && loan.status !== 'borrowed') || !loan.expected_return_date) return [];
 
-          const returnDate = new Date(`${loan.expected_return_date}T00:00:00`);
+          const datePart = loan.expected_return_date.slice(0, 10);
+          const returnDate = new Date(`${datePart}T00:00:00`);
+          if (Number.isNaN(returnDate.getTime())) return [];
           const daysRemaining = Math.ceil((returnDate.getTime() - today.getTime()) / 86400000);
           if (daysRemaining > 3) return [];
 
           return [{
             id: loan.id,
             itemName: loan.asset?.name || `Aset ID: ${loan.asset_id}`,
-            expectedReturnDate: loan.expected_return_date,
+            expectedReturnDate: datePart,
             daysRemaining,
           }];
         });
         setStats({
-          activeLoans: loans.filter((loan: any) => loan.status === 'approved' || loan.status === 'borrowed').length,
-          pendingRequests: loans.filter((loan: any) => loan.status === 'pending').length
-            + atkRequests.filter((request: any) => request.status === 'pending').length,
+          activeLoans: loans.filter((loan) => loan.status === 'approved' || loan.status === 'borrowed').length,
+          pendingRequests: loans.filter((loan) => loan.status === 'pending').length
+            + atkRequests.filter((request) => request.status === 'pending').length,
           totalHistory: loans.length + atkRequests.length,
         });
         setDueSoonLoans(upcomingLoans);
-      } catch (err: any) {
+      } catch {
         setStats({ activeLoans: 0, pendingRequests: 0, totalHistory: 0 });
         setDueSoonLoans([]);
       } finally {
@@ -157,7 +160,7 @@ export default function UserDashboardPage() {
                   <div key={loan.id} className="flex flex-wrap items-center justify-between gap-2 bg-white/70 rounded-xl px-3 py-2 text-xs">
                     <span className="font-bold text-slate-800">{loan.itemName}</span>
                     <span className="font-semibold text-amber-700">
-                      {loan.daysRemaining < 0 ? `Terlambat ${Math.abs(loan.daysRemaining)} hari` : loan.daysRemaining === 0 ? 'Jatuh tempo hari ini' : `${loan.daysRemaining} hari lagi`} ({loan.expectedReturnDate})
+                      {loan.daysRemaining < 0 ? `Terlambat ${Math.abs(loan.daysRemaining)} hari` : loan.daysRemaining === 0 ? 'Jatuh tempo hari ini' : `${loan.daysRemaining} hari lagi`} ({formatDate(loan.expectedReturnDate)})
                     </span>
                   </div>
                 ))}

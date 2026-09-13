@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Asset;
-use App\Models\Stationery;
+use App\Models\Atk;
 use Illuminate\Database\Seeder;
 
 class InventorySeeder extends Seeder
@@ -12,26 +12,23 @@ class InventorySeeder extends Seeder
     public function run(): void
     {
         // 1. Kategori Contoh
-        $catElectronics = Category::create([
-            'name' => 'Elektronik & Gadget',
+        $catElectronics = Category::updateOrCreate(['name' => 'Elektronik & Gadget'], [
             'type' => 'asset',
             'description' => 'Perangkat keras elektronik kantor'
         ]);
 
-        $catFurniture = Category::create([
-            'name' => 'Mebel & Perabot',
+        $catFurniture = Category::updateOrCreate(['name' => 'Mebel & Perabot'], [
             'type' => 'asset',
             'description' => 'Fasilitas meja, kursi, dan lemari kantor'
         ]);
 
-        $catPaper = Category::create([
-            'name' => 'Kertas & Pembungkusan',
+        $catPaper = Category::updateOrCreate(['name' => 'Kertas & Pembungkusan'], [
             'type' => 'stationery',
             'description' => 'Kebutuhan cetak mencetak'
         ]);
 
         // 2. Data Contoh Aset
-        Asset::create([
+        Asset::updateOrCreate(['asset_code' => 'AST-2026-001'], [
             'category_id' => $catElectronics->id,
             'asset_code' => 'AST-2026-001',
             'name' => 'MacBook Pro M3 16 Inch',
@@ -40,10 +37,9 @@ class InventorySeeder extends Seeder
             'condition' => 'good',
             'status' => 'available',
             'purchase_date' => '2026-01-15',
-            'purchase_price' => 35000000.00,
         ]);
 
-        Asset::create([
+        Asset::updateOrCreate(['asset_code' => 'AST-2026-002'], [
             'category_id' => $catFurniture->id,
             'asset_code' => 'AST-2026-002',
             'name' => 'Kursi Kerja Ergonomis',
@@ -52,13 +48,10 @@ class InventorySeeder extends Seeder
             'condition' => 'good',
             'status' => 'available',
             'purchase_date' => '2026-02-01',
-            'purchase_price' => 2500000.00,
         ]);
 
         // 3. Data Contoh ATK
-        Stationery::create([
-            'category_id' => $catPaper->id,
-            'item_code' => 'ATK-2026-001',
+        Atk::updateOrCreate(['item_code' => 'ATK-2026-001'], [
             'name' => 'Kertas A4 80gr Sidu',
             'stock' => 50,
             'unit' => 'Rim',

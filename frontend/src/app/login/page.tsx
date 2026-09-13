@@ -30,7 +30,7 @@ export default function LoginPage() {
 
       try {
         data = JSON.parse(rawResponse);
-      } catch (parseError) {
+      } catch {
         console.error('Server mengembalikan respon non-JSON:', rawResponse);
         throw new Error('Terjadi kesalahan pada respon server backend.');
       }
@@ -59,8 +59,8 @@ export default function LoginPage() {
         }
       }, 800);
 
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat login');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan saat login');
     } finally {
       setLoading(false);
     }

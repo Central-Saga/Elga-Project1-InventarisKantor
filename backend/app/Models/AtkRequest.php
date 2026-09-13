@@ -23,6 +23,13 @@ class AtkRequest extends Model
         'status',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'quantity' => 'integer',
+        ];
+    }
+
     public function atk()
     {
         return $this->belongsTo(Atk::class, 'atk_id');

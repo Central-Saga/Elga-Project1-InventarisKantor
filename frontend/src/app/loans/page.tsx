@@ -60,8 +60,8 @@ export default function LoansPage() {
       setLoans(Array.isArray(loansData) ? loansData : loansData.data || []);
       const availableAssets = Array.isArray(assetsData) ? assetsData : assetsData.data || [];
       setAssets(availableAssets.filter((a: Asset) => a.status === 'available'));
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan koneksi.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Terjadi kesalahan koneksi.');
       toast.error('Gagal memuat data dari server');
     } finally {
       setLoading(false);
@@ -101,8 +101,8 @@ export default function LoansPage() {
       toast.success('Peminjaman aset berhasil disimpan!');
       setIsModalOpen(false);
       loadData();
-    } catch (error: any) {
-      toast.error(error.message || 'Gagal menyimpan peminjaman');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Gagal menyimpan peminjaman');
     } finally {
       setIsSubmitting(false);
     }
@@ -122,8 +122,8 @@ export default function LoansPage() {
 
       toast.success('Aset berhasil dikembalikan!', { id: toastId });
       loadData();
-    } catch (err: any) {
-      toast.error(`Gagal: ${err.message}`, { id: toastId });
+    } catch (err: unknown) {
+      toast.error(`Gagal: ${err instanceof Error ? err.message : 'Terjadi kesalahan'}`, { id: toastId });
     }
   };
 

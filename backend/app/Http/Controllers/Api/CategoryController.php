@@ -9,11 +9,18 @@ class CategoryController extends Controller
 {
     public function index()
     {
-        $categories = Category::all();
+        $perPage = min(max((int) request('per_page', 50), 1), 100);
+        $categories = Category::latest()->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data'    => $categories
+            'data'    => $categories->items(),
+            'meta'    => [
+                'current_page' => $categories->currentPage(),
+                'last_page' => $categories->lastPage(),
+                'per_page' => $categories->perPage(),
+                'total' => $categories->total(),
+            ],
         ], 200);
     }
 }

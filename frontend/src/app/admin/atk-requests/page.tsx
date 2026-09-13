@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { CheckCircle2, Clock, FileText, Search, XCircle } from 'lucide-react';
+import { formatDate } from '@/lib/schemas';
 
 interface AtkRequest {
   id: number;
@@ -34,8 +35,8 @@ export default function AdminAtkRequestPage() {
       if (!res.ok) throw new Error('Gagal memuat data permintaan ATK');
       const data = await res.json();
       setRequests(Array.isArray(data) ? data : data.data || []);
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan sistem');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,8 @@ export default function AdminAtkRequestPage() {
 
       toast.success(`Permintaan berhasil ${status === 'approved' ? 'disetujui' : 'ditolak'}!`);
       fetchRequests();
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat memproses');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses');
     }
   };
 
@@ -139,7 +140,7 @@ export default function AdminAtkRequestPage() {
                     <td className="py-4 px-4 font-extrabold text-slate-700">
                       {req.quantity} <span className="text-[10px] text-slate-400 font-normal">Pcs</span>
                     </td>
-                    <td className="py-4 px-4 text-slate-500 font-medium">{req.created_at || '-'}</td>
+                    <td className="py-4 px-4 text-slate-500 font-medium">{formatDate(req.created_at)}</td>
                     <td className="py-4 px-4">
                       {req.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">

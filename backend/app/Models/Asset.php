@@ -19,9 +19,18 @@ class Asset extends Model
         'serial_number',
         'condition',
         'status',
+        'stock',
         'purchase_date',
-        'purchase_price',
+        'photo_path',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'purchase_date' => 'date',
+            'stock' => 'integer',
+        ];
+    }
 
     public function category()
     {

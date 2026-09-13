@@ -34,8 +34,8 @@ export default function AtkPage() {
     try {
       const data = await fetchAPI<Atk[]>('atks');
       setAtks(data);
-    } catch (err: any) {
-      setError(err.message || 'Gagal mengambil data ATK.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Gagal mengambil data ATK.');
     } finally {
       setLoading(false);
     }
@@ -86,8 +86,8 @@ export default function AtkPage() {
       }
       setIsModalOpen(false);
       await loadData();
-    } catch (err: any) {
-      alert(`Gagal menyimpan data: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Gagal menyimpan data: ${err instanceof Error ? err.message : 'Terjadi kesalahan'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -98,8 +98,8 @@ export default function AtkPage() {
     try {
       await fetchAPI(`atks/${id}`, { method: 'DELETE' });
       await loadData();
-    } catch (err: any) {
-      alert(`Gagal menghapus: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Gagal menghapus: ${err instanceof Error ? err.message : 'Terjadi kesalahan'}`);
     }
   };
 

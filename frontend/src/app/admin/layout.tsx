@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -10,11 +11,26 @@ import {
   Package,
   Command,
   LogOut,
-  ShieldAlert
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState({ name: 'Administrator', email: 'admin@office.com' });
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+
+    try {
+      const user = JSON.parse(storedUser) as { name?: string; email?: string };
+      setCurrentUser({
+        name: user.name || 'Administrator',
+        email: user.email || 'admin@office.com',
+      });
+    } catch {
+      localStorage.removeItem('user');
+    }
+  }, []);
 
   const navItems = [
     { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
@@ -71,11 +87,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/60 shadow-sm">
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                AD
+                {currentUser.name.slice(0, 2).toUpperCase()}
               </div>
               <div className="overflow-hidden">
-                <p className="text-xs font-bold text-slate-900 truncate">Administrator</p>
-                <p className="text-[10px] text-slate-400 truncate">admin@office.com</p>
+                <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name}</p>
+                <p className="text-[10px] text-slate-400 truncate">{currentUser.email}</p>
               </div>
             </div>
             <Link href="/" className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Keluar">

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAtkRequestRequest;
 use App\Models\Atk;
 use App\Models\AtkRequest;
 use Illuminate\Http\Request;
@@ -18,22 +19,25 @@ class AtkRequestController extends Controller
             $query->where('user_id', Auth::id());
         }
 
-        $requests = $query->get();
+        $perPage = min(max((int) request('per_page', 15), 1), 100);
+        $requests = $query->paginate($perPage);
         return response()->json([
             'success' => true,
-            'data'    => $requests
+            'data'    => $requests->items(),
+            'meta'    => [
+                'current_page' => $requests->currentPage(),
+                'last_page' => $requests->lastPage(),
+                'per_page' => $requests->perPage(),
+                'total' => $requests->total(),
+            ],
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreAtkRequestRequest $request)
     {
         $user = Auth::user();
 
-        $validated = $request->validate([
-            'atk_id'   => 'required|exists:atks,id',
-            'quantity' => 'required|integer|min:1',
-            'notes'    => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $atkRequest = DB::transaction(function () use ($validated, $user) {
             $atk = Atk::lockForUpdate()->findOrFail($validated['atk_id']);

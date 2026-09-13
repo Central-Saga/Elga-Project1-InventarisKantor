@@ -23,6 +23,21 @@ interface LoanItem {
   status?: string;
 }
 
+function formatDate(value?: string): string {
+  if (!value) return 'Segera';
+
+  const datePart = value.slice(0, 10);
+  const date = new Date(`${datePart}T00:00:00`);
+
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat('id-ID', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(date);
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState({
     totalAssets: 0,
@@ -69,16 +84,16 @@ export default function AdminDashboardPage() {
       // 3. Ambil data Peminjaman Aset
       const resLoans = await fetch('http://127.0.0.1:8000/api/v1/loans', { headers });
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
-      const loans = Array.isArray(dataLoans) ? dataLoans : (dataLoans.data || []);
+      const loans: LoanItem[] = Array.isArray(dataLoans) ? dataLoans : (dataLoans.data || []);
 
       // Pengajuan pending mencakup peminjaman aset dan permintaan ATK.
       const resAtkRequests = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', { headers });
       const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
-      const atkRequests = Array.isArray(dataAtkRequests) ? dataAtkRequests : (dataAtkRequests.data || []);
+      const atkRequests: Array<{ status?: string }> = Array.isArray(dataAtkRequests) ? dataAtkRequests : (dataAtkRequests.data || []);
       
-      const pendingCount = loans.filter((l: any) => l.status === 'pending').length
-        + atkRequests.filter((request: any) => request.status === 'pending').length;
-      const activeLoansList = loans.filter((l: any) => l.status === 'approved' || l.status === 'borrowed');
+      const pendingCount = loans.filter((loan) => loan.status === 'pending').length
+        + atkRequests.filter((request) => request.status === 'pending').length;
+      const activeLoansList = loans.filter((loan) => loan.status === 'approved' || loan.status === 'borrowed');
 
       setStats({
         totalAssets: assetsCount,
@@ -89,7 +104,7 @@ export default function AdminDashboardPage() {
 
       setUpcomingReturns(activeLoansList.slice(0, 5));
 
-    } catch (err: any) {
+    } catch {
       toast.error('Gagal memuat data dashboard admin');
     } finally {
       setLoading(false);
@@ -138,7 +153,7 @@ export default function AdminDashboardPage() {
         const errData = await res.json();
         toast.error(errData.message || 'Gagal menyimpan data ATK');
       }
-    } catch (error) {
+    } catch {
       toast.error('Terjadi kesalahan koneksi ke server');
     } finally {
       setSubmitting(false);
@@ -249,7 +264,7 @@ export default function AdminDashboardPage() {
                       <td className="py-3.5 px-3 font-bold text-slate-900">{loan.borrower_name || 'Karyawan'}</td>
                       <td className="py-3.5 px-3 font-medium text-slate-700">{loan.asset?.name || loan.item_name || 'Aset Kantor'}</td>
                       <td className="py-3.5 px-3 font-semibold text-purple-600">
-                        {loan.expected_return_date || loan.due_date || loan.return_date || 'Segera'}
+                        {formatDate(loan.expected_return_date || loan.due_date || loan.return_date)}
                       </td>
                     </tr>
                   ))

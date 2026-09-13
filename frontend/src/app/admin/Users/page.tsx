@@ -33,8 +33,8 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error('Gagal memuat data pegawai');
       const result = await res.json();
       setUsers(Array.isArray(result) ? result : result.data || []);
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan sistem');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     } finally {
       setLoading(false);
     }
@@ -72,8 +72,8 @@ export default function AdminUsersPage() {
       setFormPassword('');
       setFormRole('staff');
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menyimpan data');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menyimpan data');
     }
   };
 
@@ -90,8 +90,8 @@ export default function AdminUsersPage() {
 
       toast.success('Pegawai berhasil dihapus');
       fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menghapus data');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus data');
     }
   };
 

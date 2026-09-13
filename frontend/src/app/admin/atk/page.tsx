@@ -6,6 +6,7 @@ import { PackageCheck, Search, Plus, X } from 'lucide-react';
 
 interface Atk {
   id: number;
+  item_code: string;
   name: string;
   stock: number;
   unit: string;
@@ -17,7 +18,7 @@ export default function AdminStockAtkPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ item_code: '', name: '', stock: '', unit: 'Pcs', min_stock: '5' });
+  const [form, setForm] = useState({ name: '', stock: '', unit: 'Pcs', min_stock: '5' });
 
   const fetchAtks = async () => {
     try {
@@ -33,8 +34,8 @@ export default function AdminStockAtkPage() {
       if (!res.ok) throw new Error('Gagal memuat data stock ATK');
       const data = await res.json();
       setAtks(Array.isArray(data) ? data : data.data || []);
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan sistem');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     } finally {
       setLoading(false);
     }
@@ -61,10 +62,10 @@ export default function AdminStockAtkPage() {
       if (!res.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Gagal menambahkan ATK');
       toast.success('ATK berhasil ditambahkan.');
       setIsModalOpen(false);
-      setForm({ item_code: '', name: '', stock: '', unit: 'Pcs', min_stock: '5' });
+      setForm({ name: '', stock: '', unit: 'Pcs', min_stock: '5' });
       fetchAtks();
-    } catch (err: any) {
-      toast.error(err.message || 'Gagal menambahkan ATK');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menambahkan ATK');
     } finally {
       setSubmitting(false);
     }
@@ -111,6 +112,7 @@ export default function AdminStockAtkPage() {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/50 text-slate-400 uppercase tracking-wider font-bold">
                 <th className="py-4 px-4">Nama Barang</th>
+                <th className="py-4 px-4">Kode ATK</th>
                 <th className="py-4 px-4">Jumlah Stok</th>
                 <th className="py-4 px-4">Satuan</th>
                 <th className="py-4 px-4">Status Stok</th>
@@ -119,12 +121,13 @@ export default function AdminStockAtkPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-10 text-slate-400">Memuat data ATK...</td>
+                  <td colSpan={5} className="text-center py-10 text-slate-400">Memuat data ATK...</td>
                 </tr>
               ) : filteredAtks.length > 0 ? (
                 filteredAtks.map((atk) => (
                   <tr key={atk.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-4 font-bold text-slate-900">{atk.name}</td>
+                    <td className="py-4 px-4 font-mono text-slate-500">{atk.item_code}</td>
                     <td className="py-4 px-4 font-extrabold text-slate-800">{atk.stock}</td>
                     <td className="py-4 px-4 text-slate-500 font-medium">{atk.unit || 'Pcs'}</td>
                     <td className="py-4 px-4">
@@ -138,7 +141,7 @@ export default function AdminStockAtkPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={4} className="text-center py-10 text-slate-400">Tidak ada item ATK ditemukan.</td>
+                  <td colSpan={5} className="text-center py-10 text-slate-400">Tidak ada item ATK ditemukan.</td>
                 </tr>
               )}
             </tbody>
@@ -154,7 +157,7 @@ export default function AdminStockAtkPage() {
               <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700"><X size={18} /></button>
             </div>
             <form onSubmit={handleCreateAtk} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input required placeholder="Kode ATK" value={form.item_code} onChange={(e) => setForm({ ...form, item_code: e.target.value })} className="input" />
+              <p className="sm:col-span-2 text-xs text-slate-500">Kode ATK dibuat otomatis setelah disimpan.</p>
               <input required placeholder="Nama barang" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" />
               <input required type="number" min="0" placeholder="Stok awal" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="input" />
               <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="input"><option>Pcs</option><option>Box</option><option>Rim</option><option>Pack</option></select>

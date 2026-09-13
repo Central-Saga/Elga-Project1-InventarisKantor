@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreAtkTransactionRequest;
 use App\Models\AtkTransaction;
 use App\Models\Atk;
 use Illuminate\Http\Request;
@@ -12,26 +13,27 @@ class AtkTransactionController extends Controller
 {
     public function index()
     {
-        $transactions = AtkTransaction::with('atk')->latest()->get();
+        $perPage = min(max((int) request('per_page', 15), 1), 100);
+        $transactions = AtkTransaction::with('atk')->latest()->paginate($perPage);
 
         return response()->json([
             'success' => true,
-            'data'    => $transactions
+            'data'    => $transactions->items(),
+            'meta'    => [
+                'current_page' => $transactions->currentPage(),
+                'last_page' => $transactions->lastPage(),
+                'per_page' => $transactions->perPage(),
+                'total' => $transactions->total(),
+            ],
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreAtkTransactionRequest $request)
     {
-        $validated = $request->validate([
-            'atk_id'                => 'required|exists:atks,id',
-            'type'                  => 'required|in:in,out',
-            'qty'                   => 'required|integer|min:1',
-            'recipient_or_supplier' => 'required|string|max:255',
-            'notes'                 => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         return DB::transaction(function () use ($validated) {
-            $atk = Atk::findOrFail($validated['atk_id']);
+            $atk = Atk::whereKey($validated['atk_id'])->lockForUpdate()->firstOrFail();
 
             // Jika stok keluar, cek ketersediaan stok
             if ($validated['type'] === 'out') {

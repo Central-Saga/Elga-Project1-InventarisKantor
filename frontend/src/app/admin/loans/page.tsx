@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ArrowLeftRight, CheckCircle2, Clock, Search, XCircle } from 'lucide-react';
+import { TableState } from '@/components/TableState';
+import { formatDate } from '@/lib/schemas';
 
 interface Loan {
   id: number;
@@ -11,6 +13,7 @@ interface Loan {
   loan_date: string;
   expected_return_date?: string;
   return_date?: string;
+  user_role?: string;
   status: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'return_requested' | 'returned' | 'late';
 }
 
@@ -18,10 +21,11 @@ export default function AdminLoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [processingId, setProcessingId] = useState<number | null>(null);
 
   const fetchLoans = async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
       const res = await fetch('http://127.0.0.1:8000/api/v1/loans', {
         headers: {
@@ -33,12 +37,13 @@ export default function AdminLoansPage() {
       if (!res.ok) throw new Error('Gagal memuat data peminjaman');
       const data = await res.json();
       const rawLoans = Array.isArray(data) ? data : data.data || [];
-      setLoans(rawLoans.map((loan: any) => ({
+      setLoans(rawLoans.map((loan: Loan & { asset?: { name?: string }; asset_id?: number; user?: { role?: string } }) => ({
         ...loan,
         asset_name: loan.asset?.name || loan.asset_name || `Aset ID: ${loan.asset_id}`,
+        user_role: loan.user?.role,
       })));
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan sistem');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     } finally {
       setLoading(false);
     }
@@ -52,7 +57,9 @@ export default function AdminLoansPage() {
     if (!confirm('Apakah Anda yakin aset ini sudah dikembalikan?')) return;
 
     try {
-      const token = localStorage.getItem('token');
+      if (processingId !== null) return;
+      setProcessingId(id);
+      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
 
       const res = await fetch(`http://127.0.0.1:8000/api/v1/loans/${id}/return`, {
         method: 'POST',
@@ -61,25 +68,36 @@ export default function AdminLoansPage() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
+        body: JSON.stringify({ return_condition: 'good' }),
       });
 
-      if (!res.ok) throw new Error('Gagal memproses pengembalian aset');
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const validationMessage = data.errors
+          ? Object.values(data.errors).flat().join(', ')
+          : null;
+        throw new Error(data.message || validationMessage || `Gagal memproses pengembalian aset (${res.status})`);
+      }
 
       toast.success('Aset berhasil dikembalikan!');
       fetchLoans();
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat memproses');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses');
+    } finally {
+      setProcessingId(null);
     }
   };
 
   const handleUpdateStatus = async (id: number, status: 'approved' | 'rejected') => {
     try {
+      if (processingId !== null) return;
+      setProcessingId(id);
       const res = await fetch(`http://127.0.0.1:8000/api/v1/loans/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('access_token')}`,
         },
         body: JSON.stringify({ status }),
       });
@@ -88,8 +106,10 @@ export default function AdminLoansPage() {
 
       toast.success(status === 'approved' ? 'Permintaan disetujui.' : 'Permintaan ditolak.');
       fetchLoans();
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat memproses permintaan');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan saat memproses permintaan');
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -140,16 +160,14 @@ export default function AdminLoansPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-400">Memuat data peminjaman...</td>
-                </tr>
+                <TableState colSpan={6} loading empty={false} emptyLabel="" />
               ) : filteredLoans.length > 0 ? (
                 filteredLoans.map((loan) => (
                   <tr key={loan.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="py-4 px-4 font-bold text-slate-900">{loan.borrower_name || 'Tanpa Nama'}</td>
                     <td className="py-4 px-4 font-bold text-slate-800">{loan.asset_name || 'Aset ID: ' + loan.id}</td>
-                    <td className="py-4 px-4 text-slate-500 font-medium">{loan.loan_date || '-'}</td>
-                    <td className="py-4 px-4 text-slate-500 font-medium">{loan.expected_return_date || loan.return_date || '-'}</td>
+                    <td className="py-4 px-4 text-slate-500 font-medium">{formatDate(loan.loan_date)}</td>
+                    <td className="py-4 px-4 text-slate-500 font-medium">{formatDate(loan.expected_return_date || loan.return_date)}</td>
                     <td className="py-4 px-4">
                       {loan.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -187,24 +205,29 @@ export default function AdminLoansPage() {
                         <div className="flex justify-end gap-2">
                           <button
                             onClick={() => handleUpdateStatus(loan.id, 'approved')}
+                            disabled={processingId !== null}
                             className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors text-[11px]"
                           >
                             Setujui
                           </button>
                           <button
                             onClick={() => handleUpdateStatus(loan.id, 'rejected')}
+                            disabled={processingId !== null}
                             className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition-colors text-[11px]"
                           >
                             Tolak
                           </button>
                         </div>
-                      ) : loan.status === 'borrowed' || loan.status === 'approved' || loan.status === 'return_requested' ? (
+                      ) : loan.status === 'return_requested' || (loan.user_role === 'admin' && (loan.status === 'approved' || loan.status === 'borrowed')) ? (
                         <button
                           onClick={() => handleReturn(loan.id)}
+                          disabled={processingId !== null}
                           className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-colors shadow-sm text-[11px]"
                         >
                           {loan.status === 'return_requested' ? 'Konfirmasi Pengembalian' : 'Kembalikan'}
                         </button>
+                      ) : loan.status === 'approved' || loan.status === 'borrowed' ? (
+                        <span className="text-slate-400 font-medium text-[11px]">Menunggu pengajuan user</span>
                       ) : (
                         <span className="text-slate-400 font-medium text-[11px]">Selesai</span>
                       )}
@@ -212,9 +235,7 @@ export default function AdminLoansPage() {
                   </tr>
                 ))
               ) : (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-400">Tidak ada riwayat peminjaman ditemukan.</td>
-                </tr>
+                <TableState colSpan={6} loading={false} empty emptyLabel="Tidak ada riwayat peminjaman ditemukan." />
               )}
             </tbody>
           </table>

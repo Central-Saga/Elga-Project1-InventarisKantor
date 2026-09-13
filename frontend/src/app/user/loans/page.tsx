@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ShoppingCart, Plus, Clock, CheckCircle2, XCircle, Search, Tag, Calendar, ArrowLeft, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
+import { formatDate } from '@/lib/schemas';
 
 interface LoanItem {
   id: number;
@@ -35,6 +36,7 @@ export default function UserLoansPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [loanFilter, setLoanFilter] = useState<LoanFilter>('');
+  const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
   // State Modal Pengajuan Baru
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,6 +47,7 @@ export default function UserLoansPage() {
   const [formAtkId, setFormAtkId] = useState('1'); // ID ATK yang dipilih
   const [formQuantity, setFormQuantity] = useState('1');
   const [formReason, setFormReason] = useState('');
+  const [returnSubmittingId, setReturnSubmittingId] = useState<number | null>(null);
 
   // Fetch Data Peminjaman & Daftar ATK
   const fetchLoans = async () => {
@@ -61,25 +64,25 @@ export default function UserLoansPage() {
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
       const assetLoans = Array.isArray(dataLoans) ? dataLoans : dataLoans.data || [];
 
-      const formattedAssets = assetLoans.map((item: any) => ({
+      const formattedAssets = assetLoans.map((item: { id: number; asset_id?: number; asset?: { name?: string }; status?: LoanItem['status']; created_at?: string; expected_return_date?: string }) => ({
         id: item.id,
         item_name: item.asset?.name || `Aset ID: ${item.asset_id || item.id}`,
         type: 'Asset',
         status: item.status || 'pending',
-        created_at: item.created_at ? item.created_at.slice(0, 10) : 'Baru saja',
-        expected_return_date: item.expected_return_date || '-',
+        created_at: item.created_at || '',
+        expected_return_date: item.expected_return_date || '',
       }));
 
       const resAtkRequests = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', { headers });
       const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
       const atkRequests = Array.isArray(dataAtkRequests) ? dataAtkRequests : dataAtkRequests.data || [];
-      const formattedAtkRequests = atkRequests.map((item: any) => ({
+      const formattedAtkRequests = atkRequests.map((item: { id: number; atk_id: number; atk?: { name?: string }; status?: LoanItem['status']; created_at?: string }) => ({
         id: `atk-${item.id}`,
         item_name: item.atk?.name || `ATK ID: ${item.atk_id}`,
         type: 'ATK',
         status: item.status || 'pending',
-        created_at: item.created_at ? item.created_at.slice(0, 10) : 'Baru saja',
-        expected_return_date: '-',
+        created_at: item.created_at || '',
+        expected_return_date: '',
       }));
 
       setLoans([...formattedAssets, ...formattedAtkRequests]);
@@ -101,7 +104,7 @@ export default function UserLoansPage() {
         setFormAtkId(String(rawAtkData[0].id));
       }
 
-    } catch (err: any) {
+    } catch {
       toast.error('Gagal memuat data');
     } finally {
       setLoading(false);
@@ -109,6 +112,14 @@ export default function UserLoansPage() {
   };
 
   useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setCurrentUserRole(JSON.parse(storedUser).role ?? null);
+      } catch {
+        setCurrentUserRole(null);
+      }
+    }
     const filter = new URLSearchParams(window.location.search).get('filter');
     if (filter === 'active' || filter === 'pending' || filter === 'history') {
       setLoanFilter(filter);
@@ -163,15 +174,17 @@ export default function UserLoansPage() {
       setFormReason('');
       setExpectedReturnDate('');
       fetchLoans();
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan sistem');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     }
   };
 
   const handleReturnAsset = async (loan: LoanItem) => {
     if (!confirm(`Ajukan pengembalian aset "${loan.item_name}" kepada admin?`)) return;
+    if (returnSubmittingId !== null) return;
 
     try {
+      setReturnSubmittingId(loan.id);
       const response = await fetch(`http://127.0.0.1:8000/api/v1/loans/${loan.id}/return-request`, {
         method: 'POST',
         headers: {
@@ -184,8 +197,10 @@ export default function UserLoansPage() {
 
       toast.success('Pengajuan pengembalian dikirim ke admin.');
       fetchLoans();
-    } catch (err: any) {
-      toast.error(err.message || 'Terjadi kesalahan saat mengembalikan aset');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan saat mengembalikan aset');
+    } finally {
+      setReturnSubmittingId(null);
     }
   };
 
@@ -265,9 +280,9 @@ export default function UserLoansPage() {
                       </span>
                     </td>
                     <td className="py-4 px-4 text-slate-600 font-medium flex items-center gap-1.5 pt-4.5">
-                      <Calendar size={13} className="text-slate-400" /> {loan.created_at}
+                      <Calendar size={13} className="text-slate-400" /> {formatDate(loan.created_at)}
                     </td>
-                    <td className="py-4 px-4 text-slate-600 font-medium">{loan.expected_return_date || '-'}</td>
+                    <td className="py-4 px-4 text-slate-600 font-medium">{formatDate(loan.expected_return_date)}</td>
                     <td className="py-4 px-4">
                       {loan.status === 'pending' && (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -291,9 +306,10 @@ export default function UserLoansPage() {
                       )}
                     </td>
                     <td className="py-4 px-4 text-right">
-                      {loan.type === 'Asset' && (loan.status === 'approved' || loan.status === 'borrowed') ? (
+                      {currentUserRole !== 'admin' && loan.type === 'Asset' && (loan.status === 'approved' || loan.status === 'borrowed') ? (
                         <button
                           onClick={() => handleReturnAsset(loan)}
+                          disabled={returnSubmittingId !== null}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[11px] font-bold transition-colors"
                         >
                           <RotateCcw size={13} /> Ajukan Pengembalian

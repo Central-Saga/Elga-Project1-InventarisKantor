@@ -26,8 +26,8 @@ export default function HomePage() {
     try {
       const data = await fetchAPI<Asset[]>('assets');
       setAssets(data);
-    } catch (err: any) {
-      setError(err.message || 'Gagal mengambil data aset.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Gagal mengambil data aset.');
     } finally {
       setLoading(false);
     }

@@ -17,9 +17,19 @@ class AssetLoan extends Model
         'loan_date',
         'expected_return_date',
         'return_date',
+        'return_condition',
         'status',
         'notes',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'loan_date' => 'date',
+            'expected_return_date' => 'date',
+            'return_date' => 'date',
+        ];
+    }
 
     public function asset()
     {
