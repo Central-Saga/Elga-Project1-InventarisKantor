@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { Box, Search, Plus, X, Pencil } from 'lucide-react';
+import { Box, Search, Plus, X, Pencil, Trash2 } from 'lucide-react';
 
 interface Asset {
   id: number;
@@ -112,6 +112,29 @@ export default function AdminStockAssetPage() {
     setIsModalOpen(true);
   };
 
+  const handleDeleteAsset = async (asset: Asset) => {
+    if (!confirm(`Hapus aset "${asset.name}"?`)) return;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/assets/${asset.id}`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || 'Gagal menghapus aset');
+      }
+
+      toast.success('Aset berhasil dihapus.');
+      fetchAssets();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus aset');
+    }
+  };
+
   const filteredAssets = assets.filter((asset) => {
     const name = asset?.name ?? '';
     const code = asset?.asset_code ?? asset?.code ?? '';
@@ -185,9 +208,14 @@ export default function AdminStockAssetPage() {
                       </span>
                     </td>
                     <td className="py-4 px-4 text-right">
-                      <button onClick={() => openEditAsset(asset)} className="inline-flex items-center gap-1 px-2.5 py-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg font-bold">
-                        <Pencil size={13} /> Edit
-                      </button>
+                      <div className="inline-flex items-center gap-1.5">
+                        <button onClick={() => openEditAsset(asset)} className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg" title="Edit Aset">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDeleteAsset(asset)} className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg" title="Hapus Aset">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

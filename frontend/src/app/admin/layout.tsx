@@ -9,8 +9,10 @@ import {
   FileSpreadsheet, 
   Boxes,
   Package,
+  Users,
   Command,
   LogOut,
+  History,
 } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -38,6 +40,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'Request (ATK)', href: '/admin/atk-requests', icon: FileSpreadsheet },
     { name: 'Stock Aset', href: '/admin/assets', icon: Boxes },
     { name: 'Stock ATK', href: '/admin/atk', icon: Package },
+    { name: 'Akun', href: '/admin/users', icon: Users },
+    { name: 'Riwayat Transaksi', href: '/admin/transaction-history', icon: History },
   ];
 
   return (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import { PackageCheck, Search, Plus, X } from 'lucide-react';
+import { PackageCheck, Search, Plus, X, Pencil, Trash2 } from 'lucide-react';
 
 interface Atk {
   id: number;
@@ -17,18 +17,21 @@ export default function AdminStockAtkPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingAtk, setEditingAtk] = useState<Atk | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', stock: '', unit: 'Pcs', min_stock: '5' });
+
+  const apiHeaders = () => ({
+    Accept: 'application/json',
+    Authorization: `Bearer ${localStorage.getItem('token')}`,
+  });
 
   const fetchAtks = async () => {
     try {
       const token = localStorage.getItem('token');
 
       const res = await fetch('http://127.0.0.1:8000/api/v1/atks', {
-        headers: {
-          'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { ...apiHeaders(), Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Gagal memuat data stock ATK');
@@ -45,12 +48,12 @@ export default function AdminStockAtkPage() {
     fetchAtks();
   }, []);
 
-  const handleCreateAtk = async (event: React.FormEvent) => {
+  const handleSaveAtk = async (event: React.FormEvent) => {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/atks', {
-        method: 'POST',
+      const res = await fetch(editingAtk ? `http://127.0.0.1:8000/api/v1/atks/${editingAtk.id}` : 'http://127.0.0.1:8000/api/v1/atks', {
+        method: editingAtk ? 'PUT' : 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
@@ -60,14 +63,49 @@ export default function AdminStockAtkPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Gagal menambahkan ATK');
-      toast.success('ATK berhasil ditambahkan.');
-      setIsModalOpen(false);
-      setForm({ name: '', stock: '', unit: 'Pcs', min_stock: '5' });
+      toast.success(editingAtk ? 'Data ATK berhasil diperbarui.' : 'ATK berhasil ditambahkan.');
+      closeModal();
       fetchAtks();
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Gagal menambahkan ATK');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingAtk(null);
+    setForm({ name: '', stock: '', unit: 'Pcs', min_stock: '5' });
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (atk: Atk) => {
+    setEditingAtk(atk);
+    setForm({ name: atk.name, stock: String(atk.stock), unit: atk.unit || 'Pcs', min_stock: '5' });
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingAtk(null);
+  };
+
+  const handleDeleteAtk = async (atk: Atk) => {
+    if (!confirm(`Hapus stok ATK "${atk.name}"?`)) return;
+
+    try {
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/atks/${atk.id}`, {
+        method: 'DELETE',
+        headers: apiHeaders(),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || 'Gagal menghapus stok ATK');
+      }
+      toast.success('Stok ATK berhasil dihapus.');
+      fetchAtks();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Gagal menghapus stok ATK');
     }
   };
 
@@ -99,7 +137,7 @@ export default function AdminStockAtkPage() {
           />
         </div>
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={openCreateModal}
             className="flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm"
           >
             <Plus size={15} /> Tambah ATK
@@ -116,12 +154,13 @@ export default function AdminStockAtkPage() {
                 <th className="py-4 px-4">Jumlah Stok</th>
                 <th className="py-4 px-4">Satuan</th>
                 <th className="py-4 px-4">Status Stok</th>
+                <th className="py-4 px-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-slate-400">Memuat data ATK...</td>
+                  <td colSpan={6} className="text-center py-10 text-slate-400">Memuat data ATK...</td>
                 </tr>
               ) : filteredAtks.length > 0 ? (
                 filteredAtks.map((atk) => (
@@ -137,11 +176,21 @@ export default function AdminStockAtkPage() {
                         {atk.stock > 5 ? 'Stok Aman' : 'Stok Menipis'}
                       </span>
                     </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="inline-flex items-center gap-1.5">
+                        <button onClick={() => openEditModal(atk)} className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg" title="Edit ATK">
+                          <Pencil size={15} />
+                        </button>
+                        <button onClick={() => handleDeleteAtk(atk)} className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg" title="Hapus ATK">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-slate-400">Tidak ada item ATK ditemukan.</td>
+                  <td colSpan={6} className="text-center py-10 text-slate-400">Tidak ada item ATK ditemukan.</td>
                 </tr>
               )}
             </tbody>
@@ -153,18 +202,18 @@ export default function AdminStockAtkPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-black text-slate-900">Tambah ATK Baru</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-700"><X size={18} /></button>
+              <h2 className="text-base font-black text-slate-900">{editingAtk ? 'Edit Stok ATK' : 'Tambah ATK Baru'}</h2>
+              <button onClick={closeModal} className="p-1 text-slate-400 hover:text-slate-700"><X size={18} /></button>
             </div>
-            <form onSubmit={handleCreateAtk} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <p className="sm:col-span-2 text-xs text-slate-500">Kode ATK dibuat otomatis setelah disimpan.</p>
+            <form onSubmit={handleSaveAtk} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <p className="sm:col-span-2 text-xs text-slate-500">{editingAtk ? `Kode ATK: ${editingAtk.item_code}` : 'Kode ATK dibuat otomatis setelah disimpan.'}</p>
               <input required placeholder="Nama barang" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input" />
               <input required type="number" min="0" placeholder="Stok awal" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} className="input" />
               <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="input"><option>Pcs</option><option>Box</option><option>Rim</option><option>Pack</option></select>
               <input required type="number" min="0" placeholder="Batas stok minimum" value={form.min_stock} onChange={(e) => setForm({ ...form, min_stock: e.target.value })} className="input" />
               <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold">Batal</button>
-                <button disabled={submitting} type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-50">{submitting ? 'Menyimpan...' : 'Simpan ATK'}</button>
+                <button type="button" onClick={closeModal} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-bold">Batal</button>
+                <button disabled={submitting} type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold disabled:opacity-50">{submitting ? 'Menyimpan...' : editingAtk ? 'Simpan Perubahan' : 'Simpan ATK'}</button>
               </div>
             </form>
           </div>

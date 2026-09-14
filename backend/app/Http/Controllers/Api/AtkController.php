@@ -75,4 +75,36 @@ class AtkController extends Controller
             'data'    => new AtkResource($atk),
         ]);
     }
+
+    public function update(Request $request, Atk $atk)
+    {
+        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat mengubah stok ATK.');
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'unit' => ['required', 'string', 'max:50'],
+            'min_stock' => ['nullable', 'integer', 'min:0'],
+        ]);
+
+        $atk->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data stok ATK berhasil diperbarui.',
+            'data' => new AtkResource($atk->fresh()),
+        ]);
+    }
+
+    public function destroy(Request $request, Atk $atk)
+    {
+        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menghapus stok ATK.');
+
+        $atk->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stok ATK berhasil dihapus.',
+        ]);
+    }
 }

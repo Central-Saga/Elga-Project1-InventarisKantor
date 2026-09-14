@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\AtkController;
 use App\Http\Controllers\Api\AssetLoanController;
 use App\Http\Controllers\Api\AtkTransactionController;
 use App\Http\Controllers\Api\AtkRequestController;
+use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\TransactionHistoryController;
 
 // Route Public (Tanpa Login)
 Route::prefix('v1')->group(function () {
@@ -18,6 +20,8 @@ Route::prefix('v1')->group(function () {
 // Route Aplikasi (Wajib Login dengan Sanctum Bearer Token)
 Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/transaction-history', [TransactionHistoryController::class, 'index']);
     
     // Mengambil data user yang sedang login secara dinamis
     Route::get('/user', function (Request $request) {
