@@ -16,10 +16,12 @@ class AssetResource extends JsonResource
             'brand' => $this->brand,
             'serial_number' => $this->serial_number,
             'condition' => $this->condition,
-            'status' => $this->status,
+            'status' => $this->status, // Berfungsi sebagai status badge di frontend
             'stock' => $this->stock,
-            'purchase_date' => $this->purchase_date?->toDateString(),
+            'purchase_date' => $this->purchase_date?->toIso8601String(), // Format ISO untuk tanggal
             'photo_url' => $this->photo_path ? asset('storage/'.$this->photo_path) : null,
+            
+            // Format relasi kategori sesuai standar *issue*
             'category' => $this->whenLoaded('category', fn () => [
                 'id' => $this->category->id,
                 'name' => $this->category->name,
