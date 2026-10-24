@@ -43,7 +43,6 @@ inventaris-kantor-dan-atk/
 ├── backend/                 # Laravel API, migration, seeder, controller
 │   ├── app/Http/Controllers/Api/
 │   ├── database/seeders/
-│   └── docker-compose.yml   # Compose alternatif; jangan jalankan bersama tanpa cek port
 ├── frontend/                # Next.js dan halaman Admin/User
 │   └── src/app/
 ├── compose.yaml             # Docker Compose di root
@@ -69,7 +68,7 @@ git clone https://github.com/Central-Saga/Elga-Project1-InventarisKantor.git
 cd Elga-Project1-InventarisKantor
 ```
 
-Siapkan environment **tanpa meng-commit rahasia**. Pertahankan file `.env.example` bawaan jika sudah tersedia, dan periksa variabel yang benar-benar dibaca oleh frontend pada `frontend/src/lib/api.ts` serta file terkait.
+Siapkan environment **tanpa meng-commit rahasia**. File contoh backend dan frontend sudah disediakan; salin masing-masing ke file lokal berikut:
 
 ```bash
 # Backend
@@ -86,7 +85,7 @@ npm ci --include=optional
 cd ..
 ```
 
-Repository sudah menyediakan `backend/.env.example`. Gunakan file tersebut sebagai dasar konfigurasi dan sesuaikan nilai database dengan service Docker Compose yang digunakan.
+`frontend/.env.example` mengarahkan API ke `http://localhost:8000/api`. Nilai database pada `backend/.env.example` sesuai dengan default service PostgreSQL lokal di `compose.yaml`; nilai itu hanya untuk development lokal dan tidak boleh dipakai untuk deployment.
 
 ### 2. Menyalakan PostgreSQL dengan Docker
 
@@ -98,7 +97,7 @@ docker compose -f compose.yaml up -d
 docker compose -f compose.yaml ps
 ```
 
-Periksa nama service serta pemetaan port sebelum meneruskan. Compose di root telah digunakan untuk database pada pengembangan lokal; **jangan mengasumsikan** bahwa perintah ini otomatis menjalankan Laravel dan Next.js.
+Compose ini hanya menjalankan PostgreSQL; Laravel dan Next.js dijalankan terpisah pada langkah berikutnya.
 
 Untuk menemukan port PostgreSQL yang diekspos ke host:
 
@@ -107,8 +106,6 @@ docker compose -f compose.yaml ps
 ```
 
 Contohnya pemetaan `0.0.0.0:5432->5432/tcp` berarti `DB_HOST=127.0.0.1` dan `DB_PORT=5432` **jika Laravel dijalankan langsung dari WSL/host**. Jika Laravel dijalankan **di dalam Docker Compose yang satu network**, gunakan nama service PostgreSQL dan port internal `5432` sebagai gantinya.
-
-> **Penting:** `backend/docker-compose.yml` merupakan konfigurasi lain; jangan menjalankan kedua Compose secara bersamaan tanpa memeriksa nama container, jaringan, volume, dan port.
 
 ### 3. Konfigurasi PostgreSQL Laravel
 
@@ -120,24 +117,21 @@ APP_DEBUG=true
 DB_CONNECTION=pgsql
 DB_HOST=127.0.0.1
 DB_PORT=5432
-DB_DATABASE=inventaris_kantor
-DB_USERNAME=inventaris_user
-DB_PASSWORD=ISI_PASSWORD_LOKAL
+DB_DATABASE=inventaris_db
+DB_USERNAME=central_user
+DB_PASSWORD=secretpassword
 ```
 
-Nilai `DB_DATABASE`, `DB_USERNAME`, dan password **harus sesuai database yang benar-benar dibuat oleh Compose**. Contoh di atas bukan kredensial yang pasti bekerja. Hindari memakai password yang tersimpan di repositori atau memasukkan password asli ke README.
+Nilai tersebut cocok dengan service `db` pada `compose.yaml` untuk development lokal saja. Jangan gunakan atau pertahankan nilai default ini di server, database bersama, atau deployment publik; ganti dengan kredensial lokal Anda sendiri bila perlu.
 
-Untuk **database development baru yang kosong** saja, setelah koneksi benar:
+Untuk database development lokal yang baru dan kosong, jalankan migrasi beserta seeder agar tabel, akun demo, dan data inventaris contoh tersedia:
 
 ```bash
 cd backend
-php artisan migrate
-# Opsional: lihat dan pilih seeder demo yang memang tersedia,
-# baru jalankan pada database development, JANGAN production.
-# php artisan db:seed
+php artisan migrate --seed
 ```
 
-Jika aplikasi sudah memiliki data, **jangan menjalankan** `migrate:fresh`, `db:wipe`, `down -v`, atau seeding ulang sembarangan.
+`DatabaseSeeder` membuat akun demo dan memanggil `InventorySeeder`. Seeder memakai `updateOrCreate`, jadi menjalankannya kembali dapat memperbarui data contoh yang memiliki email atau kode sama. Jangan jalankan pada database production/bersama; jika database sudah berisi data penting, cadangkan dan periksa dampaknya dahulu. Jangan gunakan `migrate:fresh`, `db:wipe`, atau `docker compose down -v` untuk setup rutin.
 
 ### 4. Menjalankan backend Laravel
 
@@ -179,7 +173,7 @@ Untuk pengembangan lokal, informasi seeder yang pernah diperiksa pada proyek ini
 | Admin | `admin@example.com` | `password` | `/admin/dashboard` |
 | Employee / User | `budi@example.com` | `password` | `/user/dashboard` |
 
-**Akun tidak otomatis ada setelah clone.** Data demo hanya tersedia apabila seeder yang sesuai telah dijalankan; cek `backend/database/seeders/DatabaseSeeder.php` untuk memastikan. Password contoh harus diganti untuk penggunaan selain development lokal. Jika versi seeder sudah berubah, utamakan isi seeder saat ini.
+Akun demo akan dibuat oleh `php artisan migrate --seed` sesuai langkah setup di atas. Jika hanya migrasi tanpa seeder yang dijalankan, akun tersebut belum tersedia. Password contoh hanya untuk development lokal dan tidak boleh dipakai pada deployment.
 
 Detail uji login: [docs/LOGIN_PER_ROLE.md](docs/LOGIN_PER_ROLE.md).
 
@@ -191,7 +185,7 @@ Detail uji login: [docs/LOGIN_PER_ROLE.md](docs/LOGIN_PER_ROLE.md).
 
 ### Admin dan User
 
-Halaman berikut perlu diambil dari aplikasi yang sedang berjalan setelah login (jangan gunakan screenshot aplikasi atau repository lain):
+Screenshot login sudah disertakan. Screenshot dashboard dan fitur lain berikut direkomendasikan sebagai pelengkap, diambil dari aplikasi yang sedang berjalan (jangan gunakan screenshot aplikasi atau repository lain):
 
 | Screenshot yang disarankan | Halaman |
 |---|---|
@@ -228,4 +222,4 @@ Simpan gambar tambahan di `docs/screenshots/` dan tautkan secara relatif dari RE
 
 Repository: [Central-Saga/Elga-Project1-InventarisKantor](https://github.com/Central-Saga/Elga-Project1-InventarisKantor).
 
-Dokumentasi ini disiapkan untuk **Issue #34 — README lengkap + `.env.example` + cara run**. Sebelum mengajukan PR, verifikasi ulang konfigurasi aktual pada branch sasaran dan tambahkan screenshot dashboard agar acceptance criteria screenshot lebih lengkap.
+Dokumentasi ini disiapkan untuk **Issue #34 — README lengkap + `.env.example` + cara run**. Pastikan langkah setup dijalankan pada lingkungan lokal baru sebelum menggunakan dokumentasi untuk versi atau konfigurasi yang berbeda.
