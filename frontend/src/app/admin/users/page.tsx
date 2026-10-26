@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Users, Plus, Search, Shield, Mail, Trash2, UserCheck, Pencil, X } from 'lucide-react';
@@ -11,7 +13,7 @@ interface User {
   role: string;
 }
 
-const API_URL = 'http://127.0.0.1:8000/api/v1/users';
+const API_URL = 'v1/users';
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -27,15 +29,14 @@ export default function AdminUsersPage() {
   const [formRole, setFormRole] = useState('staff'); // Role default
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
-  const authHeaders = () => ({
+  const apiHeaders = () => ({
     Accept: 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
   });
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetch(API_URL, { headers: authHeaders() });
+      const res = await fetchAPIResponse(API_URL, { headers: apiHeaders() });
 
       if (!res.ok) throw new Error('Gagal memuat data pegawai');
       const result = await res.json();
@@ -64,9 +65,9 @@ export default function AdminUsersPage() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch(editingUser ? `${API_URL}/${editingUser.id}` : API_URL, {
+      const res = await fetchAPIResponse(editingUser ? `${API_URL}/${editingUser.id}` : API_URL, {
         method: editingUser ? 'PUT' : 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        headers: { ...apiHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formName,
           email: formEmail,
@@ -122,9 +123,9 @@ export default function AdminUsersPage() {
     if (!confirm('Apakah Anda yakin ingin menghapus pegawai ini?')) return;
 
     try {
-      const res = await fetch(`${API_URL}/${id}`, {
+      const res = await fetchAPIResponse(`${API_URL}/${id}`, {
         method: 'DELETE',
-        headers: authHeaders(),
+        headers: apiHeaders(),
       });
 
       if (!res.ok) {

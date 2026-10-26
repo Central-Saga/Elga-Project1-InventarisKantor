@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { Boxes, FileText, Clock, CheckCircle2, ArrowRight, ShieldAlert, PlusCircle, AlertTriangle } from 'lucide-react';
@@ -26,19 +28,17 @@ export default function UserDashboardPage() {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
-        const res = await fetch('http://127.0.0.1:8000/api/v1/loans', {
+        const res = await fetchAPIResponse('v1/loans', {
           headers: {
             'Accept': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
         });
         if (!res.ok) throw new Error('Gagal memuat ringkasan dashboard');
         const response = await res.json();
         const loans: Array<{ id: number; status?: string; expected_return_date?: string; asset_id?: number; asset?: { name?: string } }> = Array.isArray(response) ? response : response.data || [];
-        const atkRes = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', {
+        const atkRes = await fetchAPIResponse('v1/atk-requests', {
           headers: {
             'Accept': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
           },
         });
         if (!atkRes.ok) throw new Error('Gagal memuat pengajuan ATK');

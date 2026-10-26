@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
@@ -40,14 +42,13 @@ export default function LoansPage() {
     notes: '',
   });
 
-  // Fungsi fetch langsung pakai fetch standard ke port 8000 (Menghindari masalah helper API tersembunyi)
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
       const [resLoans, resAssets] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/loans', { headers: { 'Accept': 'application/json' } }),
-        fetch('http://127.0.0.1:8000/api/assets', { headers: { 'Accept': 'application/json' } }),
+        fetchAPIResponse('loans', { headers: { 'Accept': 'application/json' } }),
+        fetchAPIResponse('assets', { headers: { 'Accept': 'application/json' } }),
       ]);
 
       if (!resLoans.ok || !resAssets.ok) {
@@ -77,7 +78,7 @@ export default function LoansPage() {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/loans', {
+      const res = await fetchAPIResponse('loans', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -113,7 +114,7 @@ export default function LoansPage() {
     
     const toastId = toast.loading('Memproses pengembalian...');
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/loans/${id}/return`, {
+      const res = await fetchAPIResponse(`loans/${id}/return`, {
         method: 'POST',
         headers: { 'Accept': 'application/json' },
       });

@@ -1,5 +1,6 @@
 'use client';
 
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Box, Search, Plus, X, Pencil, Trash2 } from 'lucide-react';
@@ -35,12 +36,9 @@ export default function AdminStockAssetPage() {
 
   const fetchAssets = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch('http://127.0.0.1:8000/api/v1/assets', {
+      const res = await fetchAPIResponse('v1/assets', {
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
       });
 
@@ -56,12 +54,11 @@ export default function AdminStockAssetPage() {
 
   useEffect(() => {
     fetchAssets();
-    const token = localStorage.getItem('token');
-    fetch('http://127.0.0.1:8000/api/v1/categories', {
-      headers: { Accept: 'application/json', Authorization: `Bearer ${token}` },
-    }).then((res) => res.json()).then((data) => {
-      setCategories(Array.isArray(data) ? data : data.data || []);
-    }).catch(() => undefined);
+    fetchAPI<Category[]>('v1/categories')
+      .then(setCategories)
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : 'Gagal memuat kategori aset');
+      });
   }, []);
 
   const handleSaveAsset = async (event: React.FormEvent) => {
@@ -69,14 +66,13 @@ export default function AdminStockAssetPage() {
     setSubmitting(true);
     try {
       const endpoint = editingAsset
-        ? `http://127.0.0.1:8000/api/v1/assets/${editingAsset.id}`
-        : 'http://127.0.0.1:8000/api/v1/assets';
-      const res = await fetch(endpoint, {
+        ? `v1/assets/${editingAsset.id}`
+        : 'v1/assets';
+      const res = await fetchAPIResponse(endpoint, {
         method: editingAsset ? 'PATCH' : 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
             ...form,
@@ -116,11 +112,10 @@ export default function AdminStockAssetPage() {
     if (!confirm(`Hapus aset "${asset.name}"?`)) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/assets/${asset.id}`, {
+      const res = await fetchAPIResponse(`v1/assets/${asset.id}`, {
         method: 'DELETE',
         headers: {
           Accept: 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       });
       if (!res.ok) {

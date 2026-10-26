@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { History, Search, Package, Boxes, CalendarDays, FileText } from 'lucide-react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -22,7 +24,7 @@ interface HistoryItem {
 
 type HistoryFilter = 'all' | 'ATK' | 'Aset';
 
-const API_URL = 'http://127.0.0.1:8000/api/v1/transaction-history';
+const API_URL = 'v1/transaction-history';
 
 function formatDate(value?: string | null): string {
   if (!value) return '-';
@@ -61,10 +63,9 @@ export default function AdminTransactionHistoryPage() {
   useEffect(() => {
     const loadHistory = async () => {
       try {
-        const response = await fetch(API_URL, {
+        const response = await fetchAPIResponse(API_URL, {
           headers: {
             Accept: 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token') || localStorage.getItem('access_token')}`,
           },
         });
         const data = await response.json();

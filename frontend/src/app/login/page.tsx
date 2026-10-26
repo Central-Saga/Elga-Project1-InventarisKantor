@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Toaster, toast } from 'react-hot-toast';
 import { Lock, Mail, LogIn } from 'lucide-react';
+import { fetchAPI } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,28 +17,13 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('http://127.0.0.1:8000/api/v1/login', {
+      const data = await fetchAPI<{
+        access_token?: string;
+        user?: { role?: string };
+      }>('v1/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
         body: JSON.stringify({ email, password }),
       });
-
-      const rawResponse = await res.text();
-      let data;
-
-      try {
-        data = JSON.parse(rawResponse);
-      } catch {
-        console.error('Server mengembalikan respon non-JSON:', rawResponse);
-        throw new Error('Terjadi kesalahan pada respon server backend.');
-      }
-
-      if (!res.ok) {
-        throw new Error(data.message || data.errors?.email?.[0] || 'Email atau password salah');
-      }
 
       // PERBAIKAN: Gunakan 'access_token' sesuai yang dikirim backend Laravel
       if (data.access_token) {

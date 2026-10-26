@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { CheckCircle2, Clock, FileText, Search, XCircle } from 'lucide-react';
@@ -24,12 +26,9 @@ export default function AdminAtkRequestPage() {
 
   const fetchRequests = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', {
+      const res = await fetchAPIResponse('v1/atk-requests', {
         headers: { 
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
       });
       if (!res.ok) throw new Error('Gagal memuat data permintaan ATK');
@@ -51,14 +50,11 @@ export default function AdminAtkRequestPage() {
     if (!confirm(`Apakah Anda yakin ingin ${actionName} permintaan ATK ini?`)) return;
 
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/atk-requests/${id}/status`, {
+      const res = await fetchAPIResponse(`v1/atk-requests/${id}/status`, {
         method: 'PATCH',
         headers: { 
           'Accept': 'application/json', 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ status }),
       });

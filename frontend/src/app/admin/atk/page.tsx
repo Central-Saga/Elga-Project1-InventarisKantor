@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { PackageCheck, Search, Plus, X, Pencil, Trash2 } from 'lucide-react';
@@ -23,15 +25,12 @@ export default function AdminStockAtkPage() {
 
   const apiHeaders = () => ({
     Accept: 'application/json',
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
   });
 
   const fetchAtks = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      const res = await fetch('http://127.0.0.1:8000/api/v1/atks', {
-        headers: { ...apiHeaders(), Authorization: `Bearer ${token}` },
+      const res = await fetchAPIResponse('v1/atks', {
+        headers: { ...apiHeaders() },
       });
 
       if (!res.ok) throw new Error('Gagal memuat data stock ATK');
@@ -52,12 +51,11 @@ export default function AdminStockAtkPage() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(editingAtk ? `http://127.0.0.1:8000/api/v1/atks/${editingAtk.id}` : 'http://127.0.0.1:8000/api/v1/atks', {
+      const res = await fetchAPIResponse(editingAtk ? `v1/atks/${editingAtk.id}` : 'v1/atks', {
         method: editingAtk ? 'PUT' : 'POST',
         headers: {
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({ ...form, stock: Number(form.stock), min_stock: Number(form.min_stock) }),
       });
@@ -94,7 +92,7 @@ export default function AdminStockAtkPage() {
     if (!confirm(`Hapus stok ATK "${atk.name}"?`)) return;
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/atks/${atk.id}`, {
+      const res = await fetchAPIResponse(`v1/atks/${atk.id}`, {
         method: 'DELETE',
         headers: apiHeaders(),
       });

@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { LayoutDashboard, Package, ShoppingCart, AlertTriangle, ArrowUpRight, RefreshCw, CalendarClock, Plus, X } from 'lucide-react';
@@ -64,30 +66,28 @@ export default function AdminDashboardPage() {
   const fetchAdminDashboardData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const headers = {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
       };
 
       // 1. Ambil data Aset
-      const resAssets = await fetch('http://127.0.0.1:8000/api/v1/assets', { headers });
+      const resAssets = await fetchAPIResponse('v1/assets', { headers });
       const dataAssets = resAssets.ok ? await resAssets.json() : [];
       const assetsCount = Array.isArray(dataAssets) ? dataAssets.length : (dataAssets.data?.length || 0);
 
       // 2. Ambil data Master ATK
-      const resAtk = await fetch('http://127.0.0.1:8000/api/v1/atks', { headers });
+      const resAtk = await fetchAPIResponse('v1/atks', { headers });
       const dataAtk = resAtk.ok ? await resAtk.json() : [];
       const atkItems = Array.isArray(dataAtk) ? dataAtk : (dataAtk.data || []);
       setAtkStockList(atkItems);
 
       // 3. Ambil data Peminjaman Aset
-      const resLoans = await fetch('http://127.0.0.1:8000/api/v1/loans', { headers });
+      const resLoans = await fetchAPIResponse('v1/loans', { headers });
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
       const loans: LoanItem[] = Array.isArray(dataLoans) ? dataLoans : (dataLoans.data || []);
 
       // Pengajuan pending mencakup peminjaman aset dan permintaan ATK.
-      const resAtkRequests = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', { headers });
+      const resAtkRequests = await fetchAPIResponse('v1/atk-requests', { headers });
       const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
       const atkRequests: Array<{ status?: string }> = Array.isArray(dataAtkRequests) ? dataAtkRequests : (dataAtkRequests.data || []);
       
@@ -128,12 +128,11 @@ export default function AdminDashboardPage() {
 
     try {
       setSubmitting(true);
-      const res = await fetch('http://127.0.0.1:8000/api/v1/atks', {
+      const res = await fetchAPIResponse('v1/atks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           item_code: formData.item_code,

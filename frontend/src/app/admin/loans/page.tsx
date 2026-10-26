@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ArrowLeftRight, CheckCircle2, Clock, Search, XCircle } from 'lucide-react';
@@ -25,12 +27,9 @@ export default function AdminLoansPage() {
 
   const fetchLoans = async () => {
     try {
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-
-      const res = await fetch('http://127.0.0.1:8000/api/v1/loans', {
+      const res = await fetchAPIResponse('v1/loans', {
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
       });
 
@@ -59,14 +58,11 @@ export default function AdminLoansPage() {
     try {
       if (processingId !== null) return;
       setProcessingId(id);
-      const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/loans/${id}/return`, {
+      const res = await fetchAPIResponse(`v1/loans/${id}/return`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ return_condition: 'good' }),
       });
@@ -92,12 +88,11 @@ export default function AdminLoansPage() {
     try {
       if (processingId !== null) return;
       setProcessingId(id);
-      const res = await fetch(`http://127.0.0.1:8000/api/v1/loans/${id}/status`, {
+      const res = await fetchAPIResponse(`v1/loans/${id}/status`, {
         method: 'PATCH',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('access_token')}`,
         },
         body: JSON.stringify({ status }),
       });
