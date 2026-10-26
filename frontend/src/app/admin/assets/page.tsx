@@ -1,6 +1,7 @@
 'use client';
 
 import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { TableState } from '@/components/TableState';
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { Box, Search, Plus, X, Pencil, Trash2 } from 'lucide-react';
@@ -24,6 +25,7 @@ interface Category {
 export default function AdminStockAssetPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -36,17 +38,14 @@ export default function AdminStockAssetPage() {
 
   const fetchAssets = async () => {
     try {
-      const res = await fetchAPIResponse('v1/assets', {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!res.ok) throw new Error('Gagal memuat data aset');
-      const data = await res.json();
-      setAssets(Array.isArray(data) ? data : data.data || []);
+      setLoading(true);
+      setError(null);
+      const data = await fetchAPI<Asset[]>('v1/assets');
+      setAssets(data);
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
+      const message = err instanceof Error ? err.message : 'Gagal memuat data aset';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -184,9 +183,9 @@ export default function AdminStockAssetPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-10 text-slate-400">Memuat data aset...</td>
-                </tr>
+                <TableState colSpan={7} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={7} loading={false} empty={false} emptyLabel="" error={error} onRetry={fetchAssets} />
               ) : filteredAssets.length > 0 ? (
                 filteredAssets.map((asset) => (
                   <tr key={asset.id} className="hover:bg-slate-50/50 transition-colors">

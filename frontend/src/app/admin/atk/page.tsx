@@ -1,6 +1,7 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { TableState } from '@/components/TableState';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -17,6 +18,7 @@ interface Atk {
 export default function AdminStockAtkPage() {
   const [atks, setAtks] = useState<Atk[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAtk, setEditingAtk] = useState<Atk | null>(null);
@@ -29,15 +31,13 @@ export default function AdminStockAtkPage() {
 
   const fetchAtks = async () => {
     try {
-      const res = await fetchAPIResponse('v1/atks', {
-        headers: { ...apiHeaders() },
-      });
-
-      if (!res.ok) throw new Error('Gagal memuat data stock ATK');
-      const data = await res.json();
-      setAtks(Array.isArray(data) ? data : data.data || []);
+      setLoading(true);
+      setError(null);
+      setAtks(await fetchAPI<Atk[]>('v1/atks'));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
+      const message = err instanceof Error ? err.message : 'Gagal memuat data stock ATK';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -157,9 +157,9 @@ export default function AdminStockAtkPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-400">Memuat data ATK...</td>
-                </tr>
+                <TableState colSpan={6} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={6} loading={false} empty={false} emptyLabel="" error={error} onRetry={fetchAtks} />
               ) : filteredAtks.length > 0 ? (
                 filteredAtks.map((atk) => (
                   <tr key={atk.id} className="hover:bg-slate-50/50 transition-colors">

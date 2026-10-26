@@ -23,6 +23,8 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadAssets = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await fetchAPI<Asset[]>('assets');
       setAssets(data);
@@ -56,12 +58,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 mb-6 text-red-700 bg-red-100 rounded-lg border border-red-300">
-          {error}
-        </div>
-      )}
-
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden p-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
@@ -80,6 +76,8 @@ export default function HomePage() {
                     Memuat data aset...
                   </td>
                 </tr>
+              ) : error ? (
+                <tr><td colSpan={4} className="text-center py-8 text-red-700">{error}</td></tr>
               ) : assets.length > 0 ? (
                 assets.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 transition">

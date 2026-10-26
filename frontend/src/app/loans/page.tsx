@@ -1,11 +1,12 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { toast, Toaster } from 'react-hot-toast';
-import { Plus, ArrowLeft, ArrowRight, AlertCircle, Calendar, FileText, User, Box } from 'lucide-react';
+import { Plus, ArrowLeft, ArrowRight, Calendar, FileText, User, Box } from 'lucide-react';
+import { TableState } from '@/components/TableState';
 
 interface Asset {
   id: number;
@@ -46,24 +47,15 @@ export default function LoansPage() {
     setLoading(true);
     setError(null);
     try {
-      const [resLoans, resAssets] = await Promise.all([
-        fetchAPIResponse('loans', { headers: { 'Accept': 'application/json' } }),
-        fetchAPIResponse('assets', { headers: { 'Accept': 'application/json' } }),
+      const [loansData, assetsData] = await Promise.all([
+        fetchAPI<Loan[]>('loans'),
+        fetchAPI<Asset[]>('assets'),
       ]);
-
-      if (!resLoans.ok || !resAssets.ok) {
-        throw new Error('Gagal terhubung ke server backend Laravel.');
-      }
-
-      const loansData = await resLoans.json();
-      const assetsData = await resAssets.json();
-
-      setLoans(Array.isArray(loansData) ? loansData : loansData.data || []);
-      const availableAssets = Array.isArray(assetsData) ? assetsData : assetsData.data || [];
-      setAssets(availableAssets.filter((a: Asset) => a.status === 'available'));
+      setLoans(loansData);
+      setAssets(assetsData.filter((asset) => asset.status === 'available'));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan koneksi.');
-      toast.error('Gagal memuat data dari server');
+      toast.error(err instanceof Error ? err.message : 'Gagal memuat data dari server');
     } finally {
       setLoading(false);
     }
@@ -167,13 +159,6 @@ export default function LoansPage() {
         </button>
       </div>
 
-      {error && (
-        <div className="p-4 mb-6 text-red-700 bg-red-50 rounded-xl border border-red-200 flex items-center gap-3">
-          <AlertCircle size={20} className="text-red-500 shrink-0" />
-          <span className="text-sm font-medium">{error} (Pastikan Laravel menyala di port 8000)</span>
-        </div>
-      )}
-
       {/* Table Card */}
       <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -198,6 +183,8 @@ export default function LoansPage() {
                     </div>
                   </td>
                 </tr>
+              ) : error ? (
+                <TableState colSpan={6} loading={false} empty={false} emptyLabel="" error={error} onRetry={loadData} />
               ) : loans.length > 0 ? (
                 loans.map((item) => (
                   <tr key={item.id} className="hover:bg-emerald-50/30 transition-colors">

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fetchAPI } from '@/lib/api';
 import Link from 'next/link';
 import AtkRequestModal from '@/components/AtkRequestModal';
+import { TableState } from '@/components/TableState';
 
 interface Atk {
   id: number; 
@@ -31,6 +32,8 @@ export default function AtkPage() {
   });
 
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
       const data = await fetchAPI<Atk[]>('atks');
       setAtks(data);
@@ -136,12 +139,6 @@ export default function AtkPage() {
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 mb-6 text-red-700 bg-red-100 rounded-lg border border-red-300">
-          {error}
-        </div>
-      )}
-
       <div className="bg-white border rounded-xl shadow-sm overflow-hidden p-6">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
@@ -157,11 +154,9 @@ export default function AtkPage() {
             </thead>
             <tbody className="divide-y divide-gray-200 text-gray-600">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-500">
-                    Memuat data ATK...
-                  </td>
-                </tr>
+                <TableState colSpan={6} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={6} loading={false} empty={false} emptyLabel="" error={error} onRetry={loadData} />
               ) : atks.length > 0 ? (
                 atks.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50 transition">

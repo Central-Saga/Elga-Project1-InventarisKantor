@@ -1,6 +1,7 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { RequestError } from '@/components/RequestError';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -51,6 +52,7 @@ export default function AdminDashboardPage() {
   const [atkStockList, setAtkStockList] = useState<AtkItem[]>([]);
   const [upcomingReturns, setUpcomingReturns] = useState<LoanItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // State untuk Modal Tambah / Input Stok ATK
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -63,34 +65,21 @@ export default function AdminDashboardPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch ringkasan data, stok ATK, & jadwal pengembalian
-  const fetchAdminDashboardData = async () => {
+  const fetchAdminDashboardData = async (showLoading = true) => {
     try {
-      setLoading(true);
-      const headers = {
-        'Accept': 'application/json',
-      };
-
-      // 1. Ambil data Aset
-      const resAssets = await fetchAPIResponse('v1/assets', { headers });
-      const dataAssets = resAssets.ok ? await resAssets.json() : [];
-      const assetsCount = Array.isArray(dataAssets) ? dataAssets.length : (dataAssets.data?.length || 0);
-
-      // 2. Ambil data Master ATK
-      const resAtk = await fetchAPIResponse('v1/atks', { headers });
-      const dataAtk = resAtk.ok ? await resAtk.json() : [];
-      const atkItems = Array.isArray(dataAtk) ? dataAtk : (dataAtk.data || []);
+      if (showLoading) {
+        setLoading(true);
+        setError(null);
+      }
+      const [assets, atkItems, loans, atkRequests] = await Promise.all([
+        fetchAPI<unknown[]>('v1/assets'),
+        fetchAPI<AtkItem[]>('v1/atks'),
+        fetchAPI<LoanItem[]>('v1/loans'),
+        fetchAPI<Array<{ status?: string }>>('v1/atk-requests'),
+      ]);
+      setError(null);
+      const assetsCount = assets.length;
       setAtkStockList(atkItems);
-
-      // 3. Ambil data Peminjaman Aset
-      const resLoans = await fetchAPIResponse('v1/loans', { headers });
-      const dataLoans = resLoans.ok ? await resLoans.json() : [];
-      const loans: LoanItem[] = Array.isArray(dataLoans) ? dataLoans : (dataLoans.data || []);
-
-      // Pengajuan pending mencakup peminjaman aset dan permintaan ATK.
-      const resAtkRequests = await fetchAPIResponse('v1/atk-requests', { headers });
-      const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
-      const atkRequests: Array<{ status?: string }> = Array.isArray(dataAtkRequests) ? dataAtkRequests : (dataAtkRequests.data || []);
-      
       const pendingCount = loans.filter((loan) => loan.status === 'pending').length
         + atkRequests.filter((request) => request.status === 'pending').length;
       const activeLoansList = loans.filter((loan) => loan.status === 'approved' || loan.status === 'borrowed');
@@ -104,16 +93,19 @@ export default function AdminDashboardPage() {
 
       setUpcomingReturns(activeLoansList.slice(0, 5));
 
-    } catch {
-      toast.error('Gagal memuat data dashboard admin');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal memuat data dashboard admin';
+      setError(message);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAdminDashboardData();
-    const refreshTimer = window.setInterval(fetchAdminDashboardData, 5000);
+    void fetchAdminDashboardData();
+    const refreshTimer = window.setInterval(() => {
+      void fetchAdminDashboardData(false);
+    }, 5000);
 
     return () => window.clearInterval(refreshTimer);
   }, []);
@@ -162,6 +154,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 bg-slate-50/50 min-h-screen relative">
       <Toaster position="top-right" />
+      {error && <RequestError message={error} onRetry={fetchAdminDashboardData} />}
 
       {/* Header Dashboard */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-2xl border border-slate-200/85 shadow-sm gap-4">
@@ -180,7 +173,7 @@ export default function AdminDashboardPage() {
             <Plus size={15} /> Tambah / Input ATK
           </button>
           <button
-            onClick={fetchAdminDashboardData}
+            onClick={() => void fetchAdminDashboardData()}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Muat Ulang
@@ -196,7 +189,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Jenis ATK</p>
-            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.totalAtk} Item</h3>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{loading ? '...' : error ? '—' : `${stats.totalAtk} Item`}</h3>
           </div>
         </div>
 
@@ -206,7 +199,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Aset Kantor</p>
-            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.totalAssets} Unit</h3>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{loading ? '...' : error ? '—' : `${stats.totalAssets} Unit`}</h3>
           </div>
         </div>
 
@@ -216,7 +209,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pengajuan Pending</p>
-            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.pendingLoans} Permintaan</h3>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{loading ? '...' : error ? '—' : `${stats.pendingLoans} Permintaan`}</h3>
           </div>
         </div>
 
@@ -226,7 +219,7 @@ export default function AdminDashboardPage() {
           </div>
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sedang Dipinjam</p>
-            <h3 className="text-xl font-black text-slate-900 mt-0.5">{stats.activeLoans} Aset</h3>
+            <h3 className="text-xl font-black text-slate-900 mt-0.5">{loading ? '...' : error ? '—' : `${stats.activeLoans} Aset`}</h3>
           </div>
         </div>
       </div>
@@ -257,6 +250,8 @@ export default function AdminDashboardPage() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr><td colSpan={3} className="text-center py-8 text-slate-400">Memuat data pengembalian...</td></tr>
+                ) : error ? (
+                  <tr><td colSpan={3} className="text-center py-8 text-rose-700">{error}</td></tr>
                 ) : upcomingReturns.length > 0 ? (
                   upcomingReturns.map((loan) => (
                     <tr key={loan.id} className="hover:bg-slate-50/50 transition-colors">
@@ -302,6 +297,8 @@ export default function AdminDashboardPage() {
               <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr><td colSpan={3} className="text-center py-8 text-slate-400">Memuat stok ATK...</td></tr>
+                ) : error ? (
+                  <tr><td colSpan={3} className="text-center py-8 text-rose-700">{error}</td></tr>
                 ) : atkStockList.length > 0 ? (
                   atkStockList.slice(0, 5).map((atk) => {
                     const currentStock = atk.stock ?? atk.quantity ?? 0;

@@ -1,6 +1,7 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { TableState } from '@/components/TableState';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -18,6 +19,7 @@ const API_URL = 'v1/users';
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // State untuk modal & form input pegawai baru
@@ -36,13 +38,12 @@ export default function AdminUsersPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const res = await fetchAPIResponse(API_URL, { headers: apiHeaders() });
-
-      if (!res.ok) throw new Error('Gagal memuat data pegawai');
-      const result = await res.json();
-      setUsers(Array.isArray(result) ? result : result.data || []);
+      setError(null);
+      setUsers(await fetchAPI<User[]>(API_URL));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
+      const message = err instanceof Error ? err.message : 'Gagal memuat data pegawai';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -196,9 +197,9 @@ export default function AdminUsersPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={4} className="text-center py-10 text-slate-400">Memuat data pegawai...</td>
-                </tr>
+                <TableState colSpan={4} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={4} loading={false} empty={false} emptyLabel="" error={error} onRetry={fetchUsers} />
               ) : filteredUsers.length > 0 ? (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
