@@ -1,5 +1,7 @@
 'use client';
 
+import { fetchAPIResponse } from '@/lib/api';
+
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ShoppingCart, Plus, Clock, CheckCircle2, XCircle, Search, Tag, Calendar, ArrowLeft, RotateCcw } from 'lucide-react';
@@ -53,12 +55,10 @@ export default function UserLoansPage() {
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
       const headers = {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${token}`,
       };
-      const resLoans = await fetch('http://127.0.0.1:8000/api/v1/loans', {
+      const resLoans = await fetchAPIResponse('v1/loans', {
         headers,
       });
       const dataLoans = resLoans.ok ? await resLoans.json() : [];
@@ -73,7 +73,7 @@ export default function UserLoansPage() {
         expected_return_date: item.expected_return_date || '',
       }));
 
-      const resAtkRequests = await fetch('http://127.0.0.1:8000/api/v1/atk-requests', { headers });
+      const resAtkRequests = await fetchAPIResponse('v1/atk-requests', { headers });
       const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
       const atkRequests = Array.isArray(dataAtkRequests) ? dataAtkRequests : dataAtkRequests.data || [];
       const formattedAtkRequests = atkRequests.map((item: { id: number; atk_id: number; atk?: { name?: string }; status?: LoanItem['status']; created_at?: string }) => ({
@@ -87,7 +87,7 @@ export default function UserLoansPage() {
 
       setLoans([...formattedAssets, ...formattedAtkRequests]);
 
-      const resAssets = await fetch('http://127.0.0.1:8000/api/v1/assets', { headers });
+      const resAssets = await fetchAPIResponse('v1/assets', { headers });
       const dataAssets = resAssets.ok ? await resAssets.json() : [];
       const rawAssets = Array.isArray(dataAssets) ? dataAssets : dataAssets.data || [];
       const availableAssets = rawAssets.filter((asset: AssetItem) => asset.status === 'available');
@@ -95,7 +95,7 @@ export default function UserLoansPage() {
       if (availableAssets.length > 0) setFormAssetId(String(availableAssets[0].id));
 
       // Ambil daftar master ATK untuk pilihan dropdown
-      const resAtk = await fetch('http://127.0.0.1:8000/api/v1/atks', { headers });
+      const resAtk = await fetchAPIResponse('v1/atks', { headers });
       const dataAtk = resAtk.ok ? await resAtk.json() : [];
       const rawAtkData = Array.isArray(dataAtk) ? dataAtk : dataAtk.data || [];
       setAtkList(rawAtkData);
@@ -135,7 +135,7 @@ export default function UserLoansPage() {
       let payload = {};
 
       if (formCategory === 'Asset') {
-        endpoint = 'http://127.0.0.1:8000/api/v1/loans';
+        endpoint = 'v1/loans';
         payload = {
           asset_id: parseInt(formAssetId),
           loan_date: new Date().toISOString().slice(0, 10),
@@ -144,7 +144,7 @@ export default function UserLoansPage() {
         };
       } else {
         // DI SINI BAGIAN UTAMA YANG DIGANTI: Mengarah ke /api/atk-requests agar tampil di halaman Admin
-        endpoint = 'http://127.0.0.1:8000/api/v1/atk-requests';
+        endpoint = 'v1/atk-requests';
         payload = {
           atk_id: parseInt(formAtkId),
           quantity: parseInt(formQuantity),
@@ -152,12 +152,11 @@ export default function UserLoansPage() {
         };
       }
 
-      const res = await fetch(endpoint, {
+      const res = await fetchAPIResponse(endpoint, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(payload),
       });
@@ -185,11 +184,10 @@ export default function UserLoansPage() {
 
     try {
       setReturnSubmittingId(loan.id);
-      const response = await fetch(`http://127.0.0.1:8000/api/v1/loans/${loan.id}/return-request`, {
+      const response = await fetchAPIResponse(`v1/loans/${loan.id}/return-request`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
       });
       const data = await response.json();
