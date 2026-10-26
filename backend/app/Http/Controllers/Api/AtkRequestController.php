@@ -4,27 +4,25 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAtkRequestRequest;
-use App\Models\Atk;
-use App\Models\AtkRequest;
+use App\Services\AtkRequestService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class AtkRequestController extends Controller
 {
+    public function __construct(private readonly AtkRequestService $requests) {}
+
     public function index()
     {
-        $query = AtkRequest::with(['atk', 'user'])->latest();
-        if (Auth::user()->role !== 'admin') {
-            $query->where('user_id', Auth::id());
-        }
+        $user = request()->user();
+        $requests = $this->requests->paginate(
+            $user->role === 'admin' ? null : $user->id,
+            min(max((int) request('per_page', 15), 1), 100),
+        );
 
-        $perPage = min(max((int) request('per_page', 15), 1), 100);
-        $requests = $query->paginate($perPage);
         return response()->json([
             'success' => true,
-            'data'    => $requests->items(),
-            'meta'    => [
+            'data' => $requests->items(),
+            'meta' => [
                 'current_page' => $requests->currentPage(),
                 'last_page' => $requests->lastPage(),
                 'per_page' => $requests->perPage(),
@@ -35,63 +33,25 @@ class AtkRequestController extends Controller
 
     public function store(StoreAtkRequestRequest $request)
     {
-        $user = Auth::user();
-
-        $validated = $request->validated();
-
-        $atkRequest = DB::transaction(function () use ($validated, $user) {
-            $atk = Atk::lockForUpdate()->findOrFail($validated['atk_id']);
-
-            if ($atk->stock < $validated['quantity']) {
-                abort(422, 'Stok ATK tidak mencukupi. Stok tersedia: ' . $atk->stock);
-            }
-
-            $atk->decrement('stock', $validated['quantity']);
-
-            return AtkRequest::create([
-                ...$validated,
-                'user_id' => $user->id,
-                'borrower_name' => $user->name,
-                'status' => 'pending',
-            ]);
-        });
+        $atkRequest = $this->requests->create($request->validated(), $request->user());
 
         return response()->json([
             'success' => true,
             'message' => 'Permintaan ATK berhasil dikirim.',
-            'data'    => $atkRequest
+            'data' => $atkRequest,
         ], 201);
     }
 
-    public function updateStatus(Request $request, $id)
+    public function updateStatus(Request $request, int $id)
     {
-        abort_unless(Auth::user()->role === 'admin', 403, 'Hanya admin yang dapat memproses permintaan.');
-
-        $validated = $request->validate([
-            'status' => 'required|in:approved,rejected',
-        ]);
-
-        $atkRequest = DB::transaction(function () use ($validated, $id) {
-            $atkRequest = AtkRequest::lockForUpdate()->findOrFail($id);
-            if ($atkRequest->status !== 'pending') {
-                abort(422, 'Permintaan ini sudah diproses.');
-            }
-
-            if ($validated['status'] === 'rejected') {
-                Atk::whereKey($atkRequest->atk_id)
-                    ->lockForUpdate()
-                    ->increment('stock', $atkRequest->quantity);
-            }
-
-            $atkRequest->update(['status' => $validated['status']]);
-
-            return $atkRequest;
-        });
+        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat memproses permintaan.');
+        $validated = $request->validate(['status' => 'required|in:approved,rejected']);
+        $atkRequest = $this->requests->updateStatus($id, $validated['status']);
 
         return response()->json([
             'success' => true,
             'message' => 'Status permintaan ATK berhasil diperbarui.',
-            'data'    => $atkRequest
+            'data' => $atkRequest,
         ]);
     }
 }
