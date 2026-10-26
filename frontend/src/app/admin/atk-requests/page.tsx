@@ -1,11 +1,12 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { CheckCircle2, Clock, FileText, Search, XCircle } from 'lucide-react';
 import { formatDate } from '@/lib/schemas';
+import { TableState } from '@/components/TableState';
 
 interface AtkRequest {
   id: number;
@@ -22,20 +23,18 @@ interface AtkRequest {
 export default function AdminAtkRequestPage() {
   const [requests, setRequests] = useState<AtkRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchRequests = async () => {
     try {
-      const res = await fetchAPIResponse('v1/atk-requests', {
-        headers: { 
-          'Accept': 'application/json',
-        },
-      });
-      if (!res.ok) throw new Error('Gagal memuat data permintaan ATK');
-      const data = await res.json();
-      setRequests(Array.isArray(data) ? data : data.data || []);
+      setLoading(true);
+      setError(null);
+      setRequests(await fetchAPI<AtkRequest[]>('v1/atk-requests'));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
+      const message = err instanceof Error ? err.message : 'Gagal memuat data permintaan ATK';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -118,9 +117,9 @@ export default function AdminAtkRequestPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-10 text-slate-400">Memuat data permintaan...</td>
-                </tr>
+                <TableState colSpan={6} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={6} loading={false} empty={false} emptyLabel="" error={error} onRetry={fetchRequests} />
               ) : filteredRequests.length > 0 ? (
                 filteredRequests.map((req) => (
                   <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">

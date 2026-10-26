@@ -1,6 +1,7 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI } from '@/lib/api';
+import { RequestError } from '@/components/RequestError';
 
 import { useEffect, useState } from 'react';
 import { Toaster } from 'react-hot-toast';
@@ -23,62 +24,56 @@ export default function UserDashboardPage() {
   });
   const [dueSoonLoans, setDueSoonLoans] = useState<DueSoonLoan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchDashboardData = async (showLoading = true) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
+        setError(null);
+      }
+      const [loans, atkRequests] = await Promise.all([
+        fetchAPI<Array<{ id: number; status?: string; expected_return_date?: string; asset_id?: number; asset?: { name?: string } }>>('v1/loans'),
+        fetchAPI<Array<{ status?: string }>>('v1/atk-requests'),
+      ]);
+      setError(null);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const upcomingLoans = loans.flatMap((loan) => {
+        if ((loan.status !== 'approved' && loan.status !== 'borrowed') || !loan.expected_return_date) return [];
+
+        const datePart = loan.expected_return_date.slice(0, 10);
+        const returnDate = new Date(`${datePart}T00:00:00`);
+        if (Number.isNaN(returnDate.getTime())) return [];
+        const daysRemaining = Math.ceil((returnDate.getTime() - today.getTime()) / 86400000);
+        if (daysRemaining > 3) return [];
+
+        return [{
+          id: loan.id,
+          itemName: loan.asset?.name || `Aset ID: ${loan.asset_id}`,
+          expectedReturnDate: datePart,
+          daysRemaining,
+        }];
+      });
+      setStats({
+        activeLoans: loans.filter((loan) => loan.status === 'approved' || loan.status === 'borrowed').length,
+        pendingRequests: loans.filter((loan) => loan.status === 'pending').length
+          + atkRequests.filter((request) => request.status === 'pending').length,
+        totalHistory: loans.length + atkRequests.length,
+      });
+      setDueSoonLoans(upcomingLoans);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Gagal memuat ringkasan dashboard');
+    } finally {
+      if (showLoading) setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        setLoading(true);
-        const res = await fetchAPIResponse('v1/loans', {
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-        if (!res.ok) throw new Error('Gagal memuat ringkasan dashboard');
-        const response = await res.json();
-        const loans: Array<{ id: number; status?: string; expected_return_date?: string; asset_id?: number; asset?: { name?: string } }> = Array.isArray(response) ? response : response.data || [];
-        const atkRes = await fetchAPIResponse('v1/atk-requests', {
-          headers: {
-            'Accept': 'application/json',
-          },
-        });
-        if (!atkRes.ok) throw new Error('Gagal memuat pengajuan ATK');
-        const atkResponse = await atkRes.json();
-        const atkRequests: Array<{ status?: string }> = Array.isArray(atkResponse) ? atkResponse : atkResponse.data || [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const upcomingLoans = loans.flatMap((loan) => {
-          if ((loan.status !== 'approved' && loan.status !== 'borrowed') || !loan.expected_return_date) return [];
-
-          const datePart = loan.expected_return_date.slice(0, 10);
-          const returnDate = new Date(`${datePart}T00:00:00`);
-          if (Number.isNaN(returnDate.getTime())) return [];
-          const daysRemaining = Math.ceil((returnDate.getTime() - today.getTime()) / 86400000);
-          if (daysRemaining > 3) return [];
-
-          return [{
-            id: loan.id,
-            itemName: loan.asset?.name || `Aset ID: ${loan.asset_id}`,
-            expectedReturnDate: datePart,
-            daysRemaining,
-          }];
-        });
-        setStats({
-          activeLoans: loans.filter((loan) => loan.status === 'approved' || loan.status === 'borrowed').length,
-          pendingRequests: loans.filter((loan) => loan.status === 'pending').length
-            + atkRequests.filter((request) => request.status === 'pending').length,
-          totalHistory: loans.length + atkRequests.length,
-        });
-        setDueSoonLoans(upcomingLoans);
-      } catch {
-        setStats({ activeLoans: 0, pendingRequests: 0, totalHistory: 0 });
-        setDueSoonLoans([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-    const refreshTimer = window.setInterval(fetchDashboardData, 5000);
+    void fetchDashboardData();
+    const refreshTimer = window.setInterval(() => {
+      void fetchDashboardData(false);
+    }, 5000);
 
     return () => window.clearInterval(refreshTimer);
   }, []);
@@ -86,6 +81,7 @@ export default function UserDashboardPage() {
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-8 bg-slate-50/50 min-h-screen">
       <Toaster position="top-right" />
+      {error && <RequestError message={error} onRetry={() => void fetchDashboardData()} />}
 
       {/* Hero Welcome Banner */}
       <div className="relative overflow-hidden bg-gradient-to-r from-purple-900 via-purple-800 to-indigo-900 rounded-3xl p-8 text-white shadow-xl shadow-purple-900/10">
@@ -117,7 +113,7 @@ export default function UserDashboardPage() {
         <Link href="/user/loans?filter=active" className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-emerald-300 hover:shadow-md transition-all">
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Aset Dipinjam Aktif</p>
-            <h3 className="text-2xl font-black text-slate-900">{loading ? '...' : stats.activeLoans}</h3>
+            <h3 className="text-2xl font-black text-slate-900">{loading ? '...' : error ? '—' : stats.activeLoans}</h3>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
             <CheckCircle2 size={22} />
@@ -128,7 +124,7 @@ export default function UserDashboardPage() {
         <Link href="/user/loans?filter=pending" className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-amber-300 hover:shadow-md transition-all">
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Menunggu Persetujuan</p>
-            <h3 className="text-2xl font-black text-slate-900">{loading ? '...' : stats.pendingRequests}</h3>
+            <h3 className="text-2xl font-black text-slate-900">{loading ? '...' : error ? '—' : stats.pendingRequests}</h3>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
             <Clock size={22} />
@@ -139,7 +135,7 @@ export default function UserDashboardPage() {
         <Link href="/user/loans?filter=history" className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between hover:border-purple-300 hover:shadow-md transition-all">
           <div>
             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total Riwayat Pengajuan</p>
-            <h3 className="text-2xl font-black text-slate-900">{loading ? '...' : stats.totalHistory}</h3>
+            <h3 className="text-2xl font-black text-slate-900">{loading ? '...' : error ? '—' : stats.totalHistory}</h3>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
             <FileText size={22} />

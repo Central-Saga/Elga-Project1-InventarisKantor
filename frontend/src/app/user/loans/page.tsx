@@ -1,15 +1,16 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import { ShoppingCart, Plus, Clock, CheckCircle2, XCircle, Search, Tag, Calendar, ArrowLeft, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { formatDate } from '@/lib/schemas';
+import { TableState } from '@/components/TableState';
 
 interface LoanItem {
-  id: number;
+  id: number | string;
   item_name?: string;
   type?: string;
   status?: 'pending' | 'approved' | 'rejected' | 'borrowed' | 'return_requested' | 'returned';
@@ -36,6 +37,7 @@ export default function UserLoansPage() {
   const [assetList, setAssetList] = useState<AssetItem[]>([]);
   const [atkList, setAtkList] = useState<AtkItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loanFilter, setLoanFilter] = useState<LoanFilter>('');
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
@@ -49,22 +51,21 @@ export default function UserLoansPage() {
   const [formAtkId, setFormAtkId] = useState('1'); // ID ATK yang dipilih
   const [formQuantity, setFormQuantity] = useState('1');
   const [formReason, setFormReason] = useState('');
-  const [returnSubmittingId, setReturnSubmittingId] = useState<number | null>(null);
+  const [returnSubmittingId, setReturnSubmittingId] = useState<number | string | null>(null);
 
   // Fetch Data Peminjaman & Daftar ATK
   const fetchLoans = async () => {
     try {
       setLoading(true);
-      const headers = {
-        'Accept': 'application/json',
-      };
-      const resLoans = await fetchAPIResponse('v1/loans', {
-        headers,
-      });
-      const dataLoans = resLoans.ok ? await resLoans.json() : [];
-      const assetLoans = Array.isArray(dataLoans) ? dataLoans : dataLoans.data || [];
+      setError(null);
+      const [assetLoans, atkRequests, rawAssets, rawAtkData] = await Promise.all([
+        fetchAPI<Array<{ id: number; asset_id?: number; asset?: { name?: string }; status?: LoanItem['status']; created_at?: string; expected_return_date?: string }>>('v1/loans'),
+        fetchAPI<Array<{ id: number; atk_id: number; atk?: { name?: string }; status?: LoanItem['status']; created_at?: string }>>('v1/atk-requests'),
+        fetchAPI<AssetItem[]>('v1/assets'),
+        fetchAPI<AtkItem[]>('v1/atks'),
+      ]);
 
-      const formattedAssets = assetLoans.map((item: { id: number; asset_id?: number; asset?: { name?: string }; status?: LoanItem['status']; created_at?: string; expected_return_date?: string }) => ({
+      const formattedAssets: LoanItem[] = assetLoans.map((item) => ({
         id: item.id,
         item_name: item.asset?.name || `Aset ID: ${item.asset_id || item.id}`,
         type: 'Asset',
@@ -73,10 +74,7 @@ export default function UserLoansPage() {
         expected_return_date: item.expected_return_date || '',
       }));
 
-      const resAtkRequests = await fetchAPIResponse('v1/atk-requests', { headers });
-      const dataAtkRequests = resAtkRequests.ok ? await resAtkRequests.json() : [];
-      const atkRequests = Array.isArray(dataAtkRequests) ? dataAtkRequests : dataAtkRequests.data || [];
-      const formattedAtkRequests = atkRequests.map((item: { id: number; atk_id: number; atk?: { name?: string }; status?: LoanItem['status']; created_at?: string }) => ({
+      const formattedAtkRequests: LoanItem[] = atkRequests.map((item) => ({
         id: `atk-${item.id}`,
         item_name: item.atk?.name || `ATK ID: ${item.atk_id}`,
         type: 'ATK',
@@ -87,25 +85,20 @@ export default function UserLoansPage() {
 
       setLoans([...formattedAssets, ...formattedAtkRequests]);
 
-      const resAssets = await fetchAPIResponse('v1/assets', { headers });
-      const dataAssets = resAssets.ok ? await resAssets.json() : [];
-      const rawAssets = Array.isArray(dataAssets) ? dataAssets : dataAssets.data || [];
       const availableAssets = rawAssets.filter((asset: AssetItem) => asset.status === 'available');
       setAssetList(availableAssets);
       if (availableAssets.length > 0) setFormAssetId(String(availableAssets[0].id));
 
-      // Ambil daftar master ATK untuk pilihan dropdown
-      const resAtk = await fetchAPIResponse('v1/atks', { headers });
-      const dataAtk = resAtk.ok ? await resAtk.json() : [];
-      const rawAtkData = Array.isArray(dataAtk) ? dataAtk : dataAtk.data || [];
       setAtkList(rawAtkData);
 
       if (rawAtkData.length > 0) {
         setFormAtkId(String(rawAtkData[0].id));
       }
 
-    } catch {
-      toast.error('Gagal memuat data');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal memuat data';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -267,7 +260,9 @@ export default function UserLoansPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-10 text-slate-400">Memuat data riwayat...</td></tr>
+                <TableState colSpan={6} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={6} loading={false} empty={false} emptyLabel="" error={error} onRetry={fetchLoans} />
               ) : filteredLoans.length > 0 ? (
                 filteredLoans.map((loan) => (
                   <tr key={loan.id} className="hover:bg-slate-50/50 transition-colors">

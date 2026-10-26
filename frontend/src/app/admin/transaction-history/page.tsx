@@ -1,6 +1,7 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI } from '@/lib/api';
+import { TableState } from '@/components/TableState';
 
 import { useEffect, useState } from 'react';
 import { History, Search, Package, Boxes, CalendarDays, FileText } from 'lucide-react';
@@ -57,28 +58,27 @@ function statusClass(status: string): string {
 export default function AdminTransactionHistoryPage() {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState<HistoryFilter>('all');
 
-  useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const response = await fetchAPIResponse(API_URL, {
-          headers: {
-            Accept: 'application/json',
-          },
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Gagal memuat riwayat transaksi');
-        setItems(data.data || []);
-      } catch (error: unknown) {
-        toast.error(error instanceof Error ? error.message : 'Gagal memuat riwayat transaksi');
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadHistory = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchAPI<HistoryItem[]>(API_URL);
+      setItems(data);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Gagal memuat riwayat transaksi';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    loadHistory();
+  useEffect(() => {
+    void loadHistory();
   }, []);
 
   const filteredItems = items.filter((item) => {
@@ -145,6 +145,8 @@ export default function AdminTransactionHistoryPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr><td colSpan={9} className="text-center py-10 text-slate-400">Memuat riwayat transaksi...</td></tr>
+              ) : error ? (
+                <TableState colSpan={9} loading={false} empty={false} emptyLabel="" error={error} onRetry={loadHistory} />
               ) : filteredItems.length === 0 ? (
                 <tr><td colSpan={9} className="text-center py-10 text-slate-400">Tidak ada riwayat transaksi ditemukan.</td></tr>
               ) : filteredItems.map((item) => (

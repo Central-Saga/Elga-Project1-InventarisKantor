@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -22,27 +22,24 @@ interface Loan {
 export default function AdminLoansPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [processingId, setProcessingId] = useState<number | null>(null);
 
   const fetchLoans = async () => {
     try {
-      const res = await fetchAPIResponse('v1/loans', {
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!res.ok) throw new Error('Gagal memuat data peminjaman');
-      const data = await res.json();
-      const rawLoans = Array.isArray(data) ? data : data.data || [];
+      setLoading(true);
+      setError(null);
+      const rawLoans = await fetchAPI<Array<Loan & { asset?: { name?: string }; asset_id?: number; user?: { role?: string } }>>('v1/loans');
       setLoans(rawLoans.map((loan: Loan & { asset?: { name?: string }; asset_id?: number; user?: { role?: string } }) => ({
         ...loan,
         asset_name: loan.asset?.name || loan.asset_name || `Aset ID: ${loan.asset_id}`,
         user_role: loan.user?.role,
       })));
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
+      const message = err instanceof Error ? err.message : 'Gagal memuat data peminjaman';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -156,6 +153,8 @@ export default function AdminLoansPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <TableState colSpan={6} loading empty={false} emptyLabel="" />
+              ) : error ? (
+                <TableState colSpan={6} loading={false} empty={false} emptyLabel="" error={error} onRetry={fetchLoans} />
               ) : filteredLoans.length > 0 ? (
                 filteredLoans.map((loan) => (
                   <tr key={loan.id} className="hover:bg-slate-50/50 transition-colors">
