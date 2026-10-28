@@ -16,6 +16,13 @@ frontend/node_modules/
 Thumbs.db
 *.Zone.Identifier
 
+# AI assistant instructions and local configuration
+.claude/
+CLAUDE.md
+AGENTS.md
+.cursor/
+.agent/
+
 # Dependencies and generated application output
 /backend/vendor/
 /backend/bootstrap/cache/*.php
