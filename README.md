@@ -1,5 +1,7 @@
 # Inventaris Kantor & ATK
 
+[![CI](https://github.com/Central-Saga/Elga-Project1-InventarisKantor/actions/workflows/ci.yml/badge.svg)](https://github.com/Central-Saga/Elga-Project1-InventarisKantor/actions/workflows/ci.yml)
+
 > Aplikasi internal untuk mengelola inventaris aset kantor, persediaan ATK, transaksi dan peminjaman aset. **Dokumentasi setup developer** untuk repository `Central-Saga/Elga-Project1-InventarisKantor`.
 
 ![Tampilan login Inventaris Kantor](docs/screenshots/login.png)

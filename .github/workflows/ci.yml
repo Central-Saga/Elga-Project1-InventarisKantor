@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    container:
+      image: php:8.2-cli
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies and PHP extensions
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl git libpq-dev libsqlite3-dev libonig-dev libxml2-dev unzip
+          docker-php-ext-install dom mbstring pdo_pgsql pdo_sqlite
+
+      - name: Install Composer
+        run: |
+          curl -fsSLO https://getcomposer.org/download/latest-stable/composer.phar
+          chmod +x composer.phar
+          mv composer.phar /usr/local/bin/composer
+
+      - name: Install PHP dependencies
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare test environment
+        working-directory: backend
+        run: |
+          cp .env.example .env.testing
+          php artisan key:generate --env=testing --force
+
+      - name: Run backend tests
+        working-directory: backend
+        run: php artisan test
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
