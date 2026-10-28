@@ -85,6 +85,19 @@ docker compose down
 
 Kredensial default Compose, mode debug, dan akun demo hanya untuk development lokal; jangan deploy konfigurasi ini dengan nilai default. Volume database tetap tersimpan setelah `docker compose down`. Perintah `docker compose down -v` menghapus database lokal secara permanen dan tidak diperlukan untuk menjalankan ulang aplikasi.
 
+## Menjalankan mode produksi
+
+Gunakan konfigurasi produksi terpisah untuk VPS atau deployment container:
+
+```bash
+APP_KEY="$(php -r 'echo "base64:".base64_encode(random_bytes(32));')" \
+docker compose -f compose.prod.yaml up --build -d
+docker compose -f compose.prod.yaml ps
+curl -f http://localhost:8000/up
+```
+
+`compose.prod.yaml` menonaktifkan debug, tidak mengekspos PostgreSQL ke host, dan menjalankan Laravel melalui PHP-FPM dengan Nginx. Migrasi dijalankan saat startup; seeder hanya dijalankan bila `RUN_SEED=true` diset secara opt-in. APP_KEY harus disimpan sebagai secret dan tidak boleh berubah antar restart.
+
 ## Pengujian akun demo
 
 Untuk pengembangan lokal, informasi seeder yang pernah diperiksa pada proyek ini menunjukkan contoh berikut:
