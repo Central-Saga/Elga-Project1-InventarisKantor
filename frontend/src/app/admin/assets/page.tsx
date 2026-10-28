@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 import { TableState } from '@/components/TableState';
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -80,7 +80,7 @@ export default function AdminStockAssetPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Gagal menambahkan aset');
+      if (!res.ok) throw new Error(getApiErrorMessage(data, 'Gagal menyimpan aset'));
       toast.success(editingAsset ? 'Aset berhasil diperbarui.' : 'Aset berhasil ditambahkan.');
       setIsModalOpen(false);
       setEditingAsset(null);
@@ -119,7 +119,7 @@ export default function AdminStockAssetPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.message || 'Gagal menghapus aset');
+        throw new Error(getApiErrorMessage(data, 'Gagal menghapus aset'));
       }
 
       toast.success('Aset berhasil dihapus.');

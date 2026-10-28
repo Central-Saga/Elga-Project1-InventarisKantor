@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 import { TableState } from '@/components/TableState';
 
 import { useEffect, useState } from 'react';
@@ -60,7 +60,7 @@ export default function AdminStockAtkPage() {
         body: JSON.stringify({ ...form, stock: Number(form.stock), min_stock: Number(form.min_stock) }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || Object.values(data.errors || {}).flat().join(', ') || 'Gagal menambahkan ATK');
+      if (!res.ok) throw new Error(getApiErrorMessage(data, 'Gagal menyimpan ATK'));
       toast.success(editingAtk ? 'Data ATK berhasil diperbarui.' : 'ATK berhasil ditambahkan.');
       closeModal();
       fetchAtks();
@@ -98,7 +98,7 @@ export default function AdminStockAtkPage() {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.message || 'Gagal menghapus stok ATK');
+        throw new Error(getApiErrorMessage(data, 'Gagal menghapus stok ATK'));
       }
       toast.success('Stok ATK berhasil dihapus.');
       fetchAtks();

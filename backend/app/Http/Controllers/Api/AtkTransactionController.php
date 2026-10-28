@@ -32,7 +32,12 @@ class AtkTransactionController extends Controller
         try {
             $transaction = $this->stock->recordTransaction($request->validated());
         } catch (InsufficientAtkStockException $exception) {
-            return response()->json(['success' => false, 'message' => $exception->getMessage()], 400);
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'data' => null,
+                'errors' => null,
+            ], 400);
         }
 
         return response()->json([

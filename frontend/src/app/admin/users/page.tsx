@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 import { TableState } from '@/components/TableState';
 
 import { useEffect, useState } from 'react';
@@ -80,8 +80,7 @@ export default function AdminUsersPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        const errorMsg = data.message || JSON.stringify(data.errors) || 'Gagal menambahkan pegawai baru';
-        throw new Error(errorMsg);
+        throw new Error(getApiErrorMessage(data, 'Gagal menambahkan pegawai baru'));
       }
 
       toast.success(editingUser ? 'Akun berhasil diperbarui!' : 'Akun berhasil ditambahkan!');
@@ -131,7 +130,7 @@ export default function AdminUsersPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.message || 'Gagal menghapus pegawai');
+        throw new Error(getApiErrorMessage(data, 'Gagal menghapus pegawai'));
       }
 
       toast.success('Pegawai berhasil dihapus');

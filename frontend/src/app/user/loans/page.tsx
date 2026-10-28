@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -156,8 +156,7 @@ export default function UserLoansPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        const errorMsg = data.message || (data.errors ? Object.values(data.errors).flat().join(', ') : 'Gagal mengirim pengajuan');
-        throw new Error(errorMsg);
+        throw new Error(getApiErrorMessage(data, 'Gagal mengirim pengajuan'));
       }
 
       toast.success('Pengajuan berhasil dikirim!');
@@ -184,7 +183,7 @@ export default function UserLoansPage() {
         },
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Gagal mengembalikan aset');
+      if (!response.ok) throw new Error(getApiErrorMessage(data, 'Gagal mengembalikan aset'));
 
       toast.success('Pengajuan pengembalian dikirim ke admin.');
       fetchLoans();

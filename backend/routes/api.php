@@ -1,33 +1,33 @@
 <?php
 
+use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\AssetLoanController;
+use App\Http\Controllers\Api\AtkController;
+use App\Http\Controllers\Api\AtkRequestController;
+use App\Http\Controllers\Api\AtkTransactionController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\TransactionHistoryController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\AssetController;
-use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\AtkController;
-use App\Http\Controllers\Api\AssetLoanController;
-use App\Http\Controllers\Api\AtkTransactionController;
-use App\Http\Controllers\Api\AtkRequestController;
-use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\TransactionHistoryController;
 
 // Route Public (Tanpa Login)
 Route::prefix('v1')->group(function () {
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 });
 
 // Route Aplikasi (Wajib Login dengan Sanctum Bearer Token)
-Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:60,1'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/transaction-history', [TransactionHistoryController::class, 'index']);
-    
+
     // Mengambil data user yang sedang login secara dinamis
     Route::get('/user', function (Request $request) {
         return response()->json([
             'success' => true,
-            'data'    => $request->user()
+            'data' => $request->user(),
         ]);
     });
 

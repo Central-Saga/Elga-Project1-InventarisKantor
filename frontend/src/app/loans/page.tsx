@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -88,7 +88,7 @@ export default function LoansPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.message || 'Gagal menyimpan data.');
+        throw new Error(getApiErrorMessage(data, 'Gagal menyimpan data.'));
       }
 
       toast.success('Peminjaman aset berhasil disimpan!');
@@ -111,7 +111,10 @@ export default function LoansPage() {
         headers: { 'Accept': 'application/json' },
       });
 
-      if (!res.ok) throw new Error('Gagal memproses pengembalian');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(data, 'Gagal memproses pengembalian'));
+      }
 
       toast.success('Aset berhasil dikembalikan!', { id: toastId });
       loadData();

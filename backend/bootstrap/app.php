@@ -1,11 +1,11 @@
 <?php
 
-use Illuminate\Foundation\Application;
-use Illuminate\Foundation\Configuration\Exceptions;
-use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -21,49 +21,58 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api();
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        $exceptions->render(function (AuthenticationException $e, Request $request) {
+        $apiError = static function (
+            int $status,
+            string $message,
+            ?array $errors = null,
+            array $headers = [],
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+                'data' => null,
+                'errors' => $errors,
+            ], $status, $headers);
+        };
+
+        $exceptions->render(function (AuthenticationException $e, Request $request) use ($apiError) {
             if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthenticated.',
-                ], 401);
+                return $apiError(401, 'Unauthenticated.');
             }
         });
 
-        $exceptions->render(function (AuthorizationException $e, Request $request) {
+        $exceptions->render(function (AuthorizationException $e, Request $request) use ($apiError) {
             if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Anda tidak memiliki hak untuk melakukan aksi ini.',
-                ], 403);
+                return $apiError(403, 'Anda tidak memiliki hak untuk melakukan aksi ini.');
             }
         });
 
-        $exceptions->render(function (ValidationException $e, Request $request) {
+        $exceptions->render(function (ValidationException $e, Request $request) use ($apiError) {
             if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Data yang dikirim tidak valid.',
-                    'errors' => $e->errors(),
-                ], 422);
+                return $apiError(422, 'Data yang dikirim tidak valid.', $e->errors());
             }
         });
 
-        $exceptions->render(function (ModelNotFoundException $e, Request $request) {
+        $exceptions->render(function (ModelNotFoundException $e, Request $request) use ($apiError) {
             if ($request->is('api/*')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Data tidak ditemukan.',
-                ], 404);
+                return $apiError(404, 'Data tidak ditemukan.');
             }
         });
 
-        $exceptions->render(function (HttpExceptionInterface $e, Request $request) {
-            if ($request->is('api/*') && $e->getStatusCode() >= 400 && $e->getStatusCode() < 500) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage() ?: 'Permintaan tidak dapat diproses.',
-                ], $e->getStatusCode());
+        $exceptions->render(function (HttpExceptionInterface $e, Request $request) use ($apiError) {
+            if ($request->is('api/*')) {
+                $status = $e->getStatusCode();
+                $message = $status >= 500
+                    ? 'Terjadi kesalahan pada server.'
+                    : ($e->getMessage() ?: 'Permintaan tidak dapat diproses.');
+
+                return $apiError($status, $message, null, $e->getHeaders());
+            }
+        });
+
+        $exceptions->render(function (\Throwable $e, Request $request) use ($apiError) {
+            if ($request->is('api/*')) {
+                return $apiError(500, 'Terjadi kesalahan pada server.');
             }
         });
     })->create();
