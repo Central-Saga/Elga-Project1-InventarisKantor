@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAtkRequest;
+use App\Http\Requests\UpdateAtkRequest;
 use App\Http\Resources\AtkResource;
+use App\Models\Atk;
 use App\Services\AtkService;
 use App\Services\AtkStockService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class AtkController extends Controller
 {
@@ -34,6 +37,8 @@ class AtkController extends Controller
 
     public function store(StoreAtkRequest $request)
     {
+        Gate::authorize('create', Atk::class);
+
         return response()->json([
             'success' => true,
             'message' => 'ATK baru berhasil ditambahkan.',
@@ -43,7 +48,7 @@ class AtkController extends Controller
 
     public function addStock(Request $request, int $id)
     {
-        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menambah stok ATK.');
+        Gate::authorize('update', $this->atks->find($id));
         $validated = $request->validate(['additional_stock' => 'required|integer|min:1']);
         $atk = $this->stock->addStock($id, $validated['additional_stock']);
 
@@ -54,16 +59,10 @@ class AtkController extends Controller
         ]);
     }
 
-    public function update(Request $request, int $id)
+    public function update(UpdateAtkRequest $request, int $id)
     {
-        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat mengubah stok ATK.');
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'stock' => ['required', 'integer', 'min:0'],
-            'unit' => ['required', 'string', 'max:50'],
-            'min_stock' => ['nullable', 'integer', 'min:0'],
-        ]);
-        $atk = $this->atks->update($id, $validated);
+        Gate::authorize('update', Atk::findOrFail($id));
+        $atk = $this->atks->update($id, $request->validated());
 
         return response()->json([
             'success' => true,
@@ -74,7 +73,7 @@ class AtkController extends Controller
 
     public function destroy(Request $request, int $id)
     {
-        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menghapus stok ATK.');
+        Gate::authorize('delete', Atk::findOrFail($id));
         $this->atks->delete($id);
 
         return response()->json(['success' => true, 'message' => 'Stok ATK berhasil dihapus.']);

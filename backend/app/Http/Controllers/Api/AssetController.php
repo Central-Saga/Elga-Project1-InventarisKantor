@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAssetRequest;
 use App\Http\Requests\UpdateAssetRequest;
 use App\Http\Resources\AssetResource;
+use App\Models\Asset;
 use App\Services\AssetService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 
 class AssetController extends Controller
 {
@@ -31,6 +33,7 @@ class AssetController extends Controller
 
     public function store(StoreAssetRequest $request)
     {
+        Gate::authorize('create', Asset::class);
         $asset = $this->assets->create($request->safe()->except('photo'), $request->file('photo'));
 
         return response()->json([
@@ -50,6 +53,7 @@ class AssetController extends Controller
 
     public function update(UpdateAssetRequest $request, int $id)
     {
+        Gate::authorize('update', $this->assets->find($id));
         $asset = $this->assets->update($id, $request->safe()->except('photo'), $request->file('photo'));
 
         return response()->json([
@@ -61,7 +65,7 @@ class AssetController extends Controller
 
     public function destroy(Request $request, int $id)
     {
-        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat menghapus aset.');
+        Gate::authorize('delete', $this->assets->find($id));
         $this->assets->delete($id);
 
         return response()->json(['success' => true, 'message' => 'Aset berhasil dihapus!']);

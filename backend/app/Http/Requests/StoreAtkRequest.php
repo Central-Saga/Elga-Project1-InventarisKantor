@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Atk;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAtkRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return $this->user()?->can('create', Atk::class) ?? false;
     }
 
     public function rules(): array

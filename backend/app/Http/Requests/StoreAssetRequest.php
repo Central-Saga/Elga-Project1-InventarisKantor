@@ -2,13 +2,14 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Asset;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAssetRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        return $this->user()?->can('create', Asset::class) ?? false;
     }
 
     public function rules(): array
