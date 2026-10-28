@@ -61,7 +61,7 @@ class AtkController extends Controller
 
     public function update(UpdateAtkRequest $request, int $id)
     {
-        Gate::authorize('update', $this->atks->find($id));
+        Gate::authorize('update', Atk::findOrFail($id));
         $atk = $this->atks->update($id, $request->validated());
 
         return response()->json([
