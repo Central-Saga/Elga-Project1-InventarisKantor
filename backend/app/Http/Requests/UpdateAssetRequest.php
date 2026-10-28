@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Asset;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,12 +10,14 @@ class UpdateAssetRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->role === 'admin';
+        $asset = Asset::findOrFail($this->route('asset') ?? $this->route('id'));
+
+        return $this->user()?->can('update', $asset) ?? false;
     }
 
     public function rules(): array
     {
-        $assetId = $this->route('asset')?->id ?? $this->route('id');
+        $assetId = $this->route('asset') ?? $this->route('id');
 
         return [
             'name' => ['required', 'string', 'max:255'],
