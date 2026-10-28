@@ -2,6 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Asset;
+use App\Models\Atk;
+use App\Models\User;
+use App\Policies\AssetPolicy;
+use App\Policies\AtkPolicy;
+use App\Policies\UserPolicy;
 use App\Repositories\Contracts\AssetLoanRepositoryInterface;
 use App\Repositories\Contracts\AssetRepositoryInterface;
 use App\Repositories\Contracts\AtkRepositoryInterface;
@@ -13,6 +19,7 @@ use App\Repositories\Eloquent\EloquentAtkRepository;
 use App\Repositories\Eloquent\EloquentAtkRequestRepository;
 use App\Repositories\Eloquent\EloquentAtkTransactionRepository;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -34,6 +41,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Asset::class, AssetPolicy::class);
+        Gate::policy(Atk::class, AtkPolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
+
         Model::preventLazyLoading(! app()->isProduction());
     }
 }
