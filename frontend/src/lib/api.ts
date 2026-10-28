@@ -2,6 +2,28 @@ const API_BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api'
 ).replace(/\/+$/, '');
 
+export function getApiErrorMessage(payload: unknown, fallback: string): string {
+  if (!payload || typeof payload !== 'object') return fallback;
+
+  const body = payload as Record<string, unknown>;
+  const errors = body.errors && typeof body.errors === 'object'
+    ? Object.entries(body.errors as Record<string, unknown>)
+      .flatMap(([field, value]) => {
+        const messages = Array.isArray(value) ? value : [value];
+        return messages
+          .filter((message): message is string => typeof message === 'string')
+          .map((message) => `${field}: ${message}`);
+      })
+      .join(', ')
+    : '';
+
+  return errors || (
+    typeof body.message === 'string' && body.message.trim()
+      ? body.message
+      : fallback
+  );
+}
+
 export async function fetchAPIResponse(
   endpoint: string,
   options?: RequestInit
@@ -60,13 +82,7 @@ export async function fetchAPI<T>(
     : {};
 
   if (!response.ok) {
-    const errors = payload.errors && typeof payload.errors === 'object'
-      ? Object.values(payload.errors).flat().filter((error): error is string => typeof error === 'string').join(', ')
-      : '';
-    const message = typeof payload.message === 'string'
-      ? payload.message
-      : errors || `Request gagal (${response.status}).`;
-    throw new Error(message);
+    throw new Error(getApiErrorMessage(json, `Request gagal (${response.status}).`));
   }
 
   return (payload.data !== undefined ? payload.data : json) as T;

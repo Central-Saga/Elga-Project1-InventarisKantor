@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -66,10 +66,7 @@ export default function AdminLoansPage() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const validationMessage = data.errors
-          ? Object.values(data.errors).flat().join(', ')
-          : null;
-        throw new Error(data.message || validationMessage || `Gagal memproses pengembalian aset (${res.status})`);
+        throw new Error(getApiErrorMessage(data, `Gagal memproses pengembalian aset (${res.status})`));
       }
 
       toast.success('Aset berhasil dikembalikan!');
@@ -94,7 +91,7 @@ export default function AdminLoansPage() {
         body: JSON.stringify({ status }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Gagal memperbarui status permintaan');
+      if (!res.ok) throw new Error(getApiErrorMessage(data, 'Gagal memperbarui status permintaan'));
 
       toast.success(status === 'approved' ? 'Permintaan disetujui.' : 'Permintaan ditolak.');
       fetchLoans();

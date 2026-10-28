@@ -1,6 +1,6 @@
 'use client';
 
-import { fetchAPI, fetchAPIResponse } from '@/lib/api';
+import { fetchAPI, fetchAPIResponse, getApiErrorMessage } from '@/lib/api';
 
 import { useEffect, useState } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
@@ -58,7 +58,10 @@ export default function AdminAtkRequestPage() {
         body: JSON.stringify({ status }),
       });
 
-      if (!res.ok) throw new Error('Gagal memperbarui status permintaan');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(getApiErrorMessage(data, 'Gagal memperbarui status permintaan'));
+      }
 
       toast.success(`Permintaan berhasil ${status === 'approved' ? 'disetujui' : 'ditolak'}!`);
       fetchRequests();
