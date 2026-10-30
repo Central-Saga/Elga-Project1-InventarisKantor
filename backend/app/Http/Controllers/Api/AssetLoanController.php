@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ReturnAssetLoanRequest;
-use App\Rules\AssetIsAvailableRule;
+use App\Http\Requests\StoreAssetLoanRequest;
+use App\Http\Requests\UpdateLoanStatusRequest;
+use App\Http\Resources\AssetLoanResource;
 use App\Services\AssetLoanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -30,15 +32,9 @@ class AssetLoanController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(StoreAssetLoanRequest $request)
     {
-        $validated = $request->validate([
-            'asset_id' => ['required', 'exists:assets,id', new AssetIsAvailableRule],
-            'loan_date' => 'required|date',
-            'expected_return_date' => 'required|date|after_or_equal:loan_date',
-            'notes' => 'nullable|string',
-        ]);
-        $loan = $this->loans->create($validated, $request->user());
+        $loan = $this->loans->create($request->validated(), $request->user());
 
         return response()->json([
             'success' => true,
@@ -47,11 +43,10 @@ class AssetLoanController extends Controller
         ], 201);
     }
 
-    public function updateStatus(Request $request, int $id)
+    public function updateStatus(UpdateLoanStatusRequest $request, int $id)
     {
-        $validated = $request->validate(['status' => 'required|in:approved,rejected']);
         Gate::authorize('approve', $this->loans->find($id));
-        $loan = $this->loans->updateStatus($id, $validated['status']);
+        $loan = $this->loans->updateStatus($id, $request->validated()['status']);
 
         return response()->json([
             'success' => true,

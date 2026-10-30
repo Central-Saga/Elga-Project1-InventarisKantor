@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreAtkRequestRequest;
+use App\Http\Requests\UpdateAtkRequestStatusRequest;
 use App\Services\AtkRequestService;
 use Illuminate\Http\Request;
 
@@ -42,11 +43,9 @@ class AtkRequestController extends Controller
         ], 201);
     }
 
-    public function updateStatus(Request $request, int $id)
+    public function updateStatus(UpdateAtkRequestStatusRequest $request, int $id)
     {
-        abort_unless($request->user()?->role === 'admin', 403, 'Hanya admin yang dapat memproses permintaan.');
-        $validated = $request->validate(['status' => 'required|in:approved,rejected']);
-        $atkRequest = $this->requests->updateStatus($id, $validated['status']);
+        $atkRequest = $this->requests->updateStatus($id, $request->validated()['status']);
 
         return response()->json([
             'success' => true,
