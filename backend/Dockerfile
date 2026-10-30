@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxml2-dev \
     nginx \
     unzip \
-    && docker-php-ext-install pdo_pgsql mbstring xml opcache \
+    && docker-php-ext-install pdo_pgsql mbstring xml opcache bcmath \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/nginx/conf.d/default.conf
 
@@ -27,7 +27,10 @@ COPY . .
 COPY docker-nginx.conf /etc/nginx/conf.d/laravel.conf
 COPY docker-opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
-RUN chown -R www-data:www-data bootstrap/cache storage
+RUN chmod +x docker-entrypoint.sh \
+    && mkdir -p bootstrap/cache storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs \
+    && chown -R www-data:www-data bootstrap/cache storage \
+    && chmod -R 775 bootstrap/cache storage
 
 EXPOSE 8000
 
