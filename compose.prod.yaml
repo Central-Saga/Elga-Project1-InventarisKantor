@@ -1,37 +1,41 @@
 services:
   db:
     image: postgres:16-alpine
+    container_name: inventaris-db-prod
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_DATABASE:-inventaris_db}
-      POSTGRES_USER: ${DB_USERNAME:-central_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secretpassword}
+      POSTGRES_DB: ${DB_DATABASE:?DB_DATABASE wajib diatur}
+      POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME wajib diatur}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diatur}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 5s
+    networks:
+      - inventaris-net
 
   api:
     build:
       context: ./backend
+    container_name: inventaris-api-prod
     restart: unless-stopped
     environment:
       APP_NAME: Inventaris
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_KEY: ${APP_KEY:-}
-      APP_URL: ${APP_URL:-http://localhost:8000}
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      APP_KEY: ${APP_KEY:?APP_KEY wajib diatur}
+      APP_URL: ${APP_URL:?APP_URL wajib diatur}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS wajib diatur}
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: 5432
-      DB_DATABASE: ${DB_DATABASE:-inventaris_db}
-      DB_USERNAME: ${DB_USERNAME:-central_user}
-      DB_PASSWORD: ${DB_PASSWORD:-secretpassword}
+      DB_DATABASE: ${DB_DATABASE:?DB_DATABASE wajib diatur}
+      DB_USERNAME: ${DB_USERNAME:?DB_USERNAME wajib diatur}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diatur}
       SESSION_DRIVER: database
       CACHE_STORE: database
       QUEUE_CONNECTION: database
@@ -47,15 +51,19 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - inventaris-net
 
   frontend:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL wajib diatur}
+    container_name: inventaris-frontend-prod
     restart: unless-stopped
     environment:
       HOSTNAME: 0.0.0.0
+      PORT: 3000
     ports:
       - "${FRONTEND_FORWARD_PORT:-3000}:3000"
     depends_on:
@@ -67,6 +75,12 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    networks:
+      - inventaris-net
 
 volumes:
   pgdata:
+
+networks:
+  inventaris-net:
+    driver: bridge
