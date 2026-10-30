@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: Inventaris Kantor & ATK API
+  version: 1.0.0
+  description: Dokumentasi REST API resmi untuk aplikasi Inventaris Kantor dan ATK (Central Saga).
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local Development Server
+
+paths:
+  /login:
+    post:
+      summary: Login pengguna (Sanctum)
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: admin@example.com
+                password:
+                  type: string
+                  example: password
+      responses:
+        '200':
+          description: Login berhasil
+          content:
+            application/json:
+              example:
+                success: true
+                message: Login berhasil
+                access_token: 1|exampletokenvalue
+                token_type: Bearer
+                user:
+                  id: 1
+                  name: Admin Inventaris
+                  email: admin@example.com
+                  role: admin
+        '422':
+          description: Kredensial tidak valid
+          content:
+            application/json:
+              example:
+                success: false
+                message: Kredensial yang diberikan salah.
+                errors:
+                  email: ["Kredensial yang diberikan salah."]
+
+  /logout:
+    post:
+      summary: Logout dan revoke token Sanctum
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Logout berhasil
+
+  /user:
+    get:
+      summary: Ambil profil user saat ini
+      tags: [Auth]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Data profil user
+
+  /assets:
+    get:
+      summary: Daftar aset kantor
+      tags: [Assets]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Daftar aset
+    post:
+      summary: Tambah aset kantor (Admin)
+      tags: [Assets]
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Aset berhasil ditambahkan
+
+  /loans:
+    get:
+      summary: Riwayat/daftar peminjaman aset
+      tags: [Asset Loans]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Daftar peminjaman
+    post:
+      summary: Pengajuan peminjaman aset baru
+      tags: [Asset Loans]
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Pengajuan peminjaman berhasil
+
+  /atk-requests:
+    get:
+      summary: Daftar permintaan ATK
+      tags: [ATK Requests]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Daftar permintaan ATK
+    post:
+      summary: Buat permintaan ATK baru
+      tags: [ATK Requests]
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Permintaan ATK berhasil dikirim
+
+  /transaction-history:
+    get:
+      summary: Riwayat transaksi gabungan (Admin)
+      tags: [Transactions]
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Daftar histori transaksi
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum Token
+
