@@ -6,4 +6,12 @@
 tests
 vendor
 node_modules
+bootstrap/cache/*.php
+!bootstrap/cache/.gitignore
 storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+!storage/framework/cache/.gitignore
+!storage/framework/sessions/.gitignore
+!storage/framework/views/.gitignore

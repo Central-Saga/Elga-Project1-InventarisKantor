@@ -21,7 +21,7 @@ class InventorySeeder extends Seeder
             'type' => 'asset',
             'description' => 'Fasilitas meja, kursi, dan lemari kantor'
         ]);
-
+    
         $catPaper = Category::updateOrCreate(['name' => 'Kertas & Pembungkusan'], [
             'type' => 'stationery',
             'description' => 'Kebutuhan cetak mencetak'

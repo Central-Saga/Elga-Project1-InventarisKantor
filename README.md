@@ -10,6 +10,7 @@
 
 - [Gambaran sistem](#gambaran-sistem)
 - [Teknologi & struktur direktori](#teknologi--struktur-direktori)
+- [Dokumentasi API (/api/v1)](docs/API_DOCUMENTATION.md) (OpenAPI: [docs/openapi.yaml](docs/openapi.yaml))
 - [Persiapan](#persiapan)
 - [Menjalankan lokal](#menjalankan-lokal)
 - [Pengujian akun demo](#pengujian-akun-demo)
@@ -54,32 +55,50 @@ inventaris-kantor-dan-atk/
 ## Persiapan
 
 - Git.
-- Docker Desktop dengan integrasi WSL aktif, atau instalasi Docker yang mendukung `docker compose`.
+- **Podman** (Podman Desktop / Podman CLI dengan `podman compose` atau `podman-compose`), ATAU **Docker** (Docker Desktop / Docker Engine).
+- Salin konfigurasi environment default (opsional jika ingin mengubah konfigurasi default):
+  ```bash
+  cp .env.example .env
+  ```
 
 ## Menjalankan lokal
 
-Clone repository, lalu jalankan semua service dari root repository:
+### Opsi A: Menggunakan Podman Compose (Rekomendasi)
+
+Dari root direktori project:
 
 ```bash
-git clone https://github.com/Central-Saga/Elga-Project1-InventarisKantor.git
-cd Elga-Project1-InventarisKantor
-docker compose config --quiet
-docker compose up --build -d
-docker compose ps
+# Menjalankan build dan start container di background
+podman compose up --build -d
+
+# Atau jika menggunakan tool podman-compose python:
+# podman-compose up --build -d
+
+# Cek status container
+podman compose ps
+
+# Cek log aplikasi
+podman compose logs -f api frontend
 ```
 
-Compose membangun dan menjalankan PostgreSQL, Laravel API, serta Next.js. API menunggu PostgreSQL sehat, membuat `APP_KEY` lokal bila belum ada, lalu menjalankan migrasi dan seeder sebelum melayani request. Buka **http://localhost:3000/login**; API tersedia di **http://localhost:8000**.
-
-Untuk melihat status dan log:
+### Opsi B: Menggunakan Docker Compose
 
 ```bash
+docker compose config --quiet
+docker compose up --build -d
 docker compose ps
 docker compose logs -f api frontend
 ```
 
+Compose membangun dan menjalankan PostgreSQL, Laravel API, serta Next.js. API secara otomatis menunggu PostgreSQL siap menerima koneksi, memastikan `APP_KEY` lokal tersedia, lalu menjalankan migrasi dan seeder demo sebelum melayani request. Buka **http://localhost:3000/login**; API tersedia di **http://localhost:8000**.
+
 Untuk menghentikan container tanpa menghapus data PostgreSQL:
 
 ```bash
+# Podman
+podman compose down
+
+# Docker
 docker compose down
 ```
 
