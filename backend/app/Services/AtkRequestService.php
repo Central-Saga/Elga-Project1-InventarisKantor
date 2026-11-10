@@ -15,6 +15,7 @@ class AtkRequestService
     public function __construct(
         private readonly AtkRepositoryInterface $atks,
         private readonly AtkRequestRepositoryInterface $requests,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function paginate(?int $userId, int $perPage): LengthAwarePaginator
@@ -34,12 +35,18 @@ class AtkRequestService
 
             $this->atks->adjustStock($atk, -$attributes['quantity']);
 
-            return $this->requests->create([
+            $request = $this->requests->create([
                 ...$attributes,
                 'user_id' => $user->id,
                 'borrower_name' => $user->name,
                 'status' => 'pending',
             ]);
+            $this->activityLog->record('atk_request.created', AtkRequest::class, $request->id, [
+                'atk_id' => $request->atk_id,
+                'quantity' => $request->quantity,
+            ]);
+
+            return $request;
         });
     }
 
@@ -60,6 +67,9 @@ class AtkRequestService
 
             $request->status = $status;
             $this->requests->save($request);
+            $this->activityLog->record('atk_request.status_updated', AtkRequest::class, $request->id, [
+                'status' => $status,
+            ]);
 
             return $request;
         });

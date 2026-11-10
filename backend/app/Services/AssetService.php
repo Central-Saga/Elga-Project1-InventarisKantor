@@ -14,6 +14,7 @@ class AssetService
     public function __construct(
         private readonly AssetRepositoryInterface $assets,
         private readonly AssetCodeGenerator $codes,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function paginate(int $perPage): LengthAwarePaginator
@@ -33,7 +34,10 @@ class AssetService
             $attributes['photo_path'] = $photo->store('assets', 'public');
         }
 
-        return $this->assets->loadCategory($this->assets->create($attributes));
+        $asset = $this->assets->create($attributes);
+        $this->activityLog->record('asset.created', Asset::class, $asset->id, $attributes);
+
+        return $this->assets->loadCategory($asset);
     }
 
     public function update(int $id, array $attributes, ?UploadedFile $photo = null): Asset
@@ -49,6 +53,10 @@ class AssetService
 
             $asset->fill($attributes);
             $this->assets->save($asset);
+            $this->activityLog->record('asset.updated', Asset::class, $asset->id, [
+                'before' => $asset->getOriginal(),
+                'after' => $attributes,
+            ]);
 
             return $this->assets->loadCategory($asset);
         });
@@ -62,5 +70,9 @@ class AssetService
         }
 
         $this->assets->delete($asset);
+        $this->activityLog->record('asset.deleted', Asset::class, $asset->id, [
+            'name' => $asset->name,
+            'asset_code' => $asset->asset_code,
+        ]);
     }
 }

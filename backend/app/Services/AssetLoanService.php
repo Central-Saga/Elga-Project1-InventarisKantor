@@ -15,6 +15,7 @@ class AssetLoanService
     public function __construct(
         private readonly AssetRepositoryInterface $assets,
         private readonly AssetLoanRepositoryInterface $loans,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function paginate(?int $userId, int $perPage): LengthAwarePaginator
@@ -29,7 +30,7 @@ class AssetLoanService
 
     public function create(array $attributes, User $user): AssetLoan
     {
-        return DB::transaction(function () use ($attributes, $user): AssetLoan {
+        $loan = DB::transaction(function () use ($attributes, $user): AssetLoan {
             $asset = $this->assets->findForUpdate($attributes['asset_id']);
             if ($asset->status !== 'available' || $asset->stock < 1) {
                 throw ValidationException::withMessages([
@@ -50,6 +51,13 @@ class AssetLoanService
                 'status' => 'pending',
             ]);
         });
+
+        $this->activityLog->record('loan.created', AssetLoan::class, $loan->id, [
+            'asset_id' => $loan->asset_id,
+            'status' => $loan->status,
+        ]);
+
+        return $loan;
     }
 
     public function updateStatus(int $id, string $status): AssetLoan
@@ -74,6 +82,9 @@ class AssetLoanService
 
             $loan->status = $status;
             $this->loans->save($loan);
+            $this->activityLog->record('loan.status_updated', AssetLoan::class, $loan->id, [
+                'status' => $status,
+            ]);
 
             return $this->loans->freshWithRelations($loan);
         });
@@ -91,6 +102,7 @@ class AssetLoanService
 
             $loan->status = 'return_requested';
             $this->loans->save($loan);
+            $this->activityLog->record('loan.return_requested', AssetLoan::class, $loan->id);
 
             return $this->loans->freshWithRelations($loan);
         });
@@ -112,6 +124,9 @@ class AssetLoanService
             $loan->return_date = now()->format('Y-m-d');
             $loan->return_condition = $condition;
             $this->loans->save($loan);
+            $this->activityLog->record('loan.returned', AssetLoan::class, $loan->id, [
+                'return_condition' => $condition,
+            ]);
 
             if ($loan->asset) {
                 $asset = $this->assets->findForUpdate($loan->asset_id);

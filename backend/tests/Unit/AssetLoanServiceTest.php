@@ -2,11 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Models\ActivityLog;
 use App\Models\Asset;
 use App\Models\AssetLoan;
 use App\Models\User;
 use App\Repositories\Contracts\AssetLoanRepositoryInterface;
 use App\Repositories\Contracts\AssetRepositoryInterface;
+use App\Services\ActivityLogService;
 use App\Services\AssetLoanService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -43,7 +45,10 @@ class AssetLoanServiceTest extends TestCase
             'status' => 'pending',
         ])->andReturn($createdLoan);
 
-        $result = (new AssetLoanService($assets, $loans))->create([
+        $activityLog = Mockery::mock(ActivityLogService::class);
+        $activityLog->shouldReceive('record')->once()->andReturn(new ActivityLog());
+
+        $result = (new AssetLoanService($assets, $loans, $activityLog))->create([
             'asset_id' => 3,
             'loan_date' => '2026-10-26',
         ], $user);
@@ -76,7 +81,10 @@ class AssetLoanServiceTest extends TestCase
         $loans->shouldReceive('save')->once()->with($loan);
         $loans->shouldReceive('freshWithRelations')->once()->with($loan)->andReturn($loan);
 
-        $result = (new AssetLoanService($assets, $loans))->updateStatus(9, 'rejected');
+        $activityLog = Mockery::mock(ActivityLogService::class);
+        $activityLog->shouldReceive('record')->once()->andReturn(new ActivityLog());
+
+        $result = (new AssetLoanService($assets, $loans, $activityLog))->updateStatus(9, 'rejected');
 
         $this->assertSame($loan, $result);
         $this->assertSame('rejected', $loan->status);
@@ -98,8 +106,11 @@ class AssetLoanServiceTest extends TestCase
         $assets->shouldNotReceive('findForUpdate');
         $assets->shouldNotReceive('adjustStock');
 
+        $activityLog = Mockery::mock(ActivityLogService::class);
+        $activityLog->shouldNotReceive('record');
+
         try {
-            (new AssetLoanService($assets, $loans))->returnAsset(9, 'good', true);
+            (new AssetLoanService($assets, $loans, $activityLog))->returnAsset(9, 'good', true);
             $this->fail('Expected an invalid loan status exception.');
         } catch (ValidationException $exception) {
             $this->assertArrayHasKey('status', $exception->errors());

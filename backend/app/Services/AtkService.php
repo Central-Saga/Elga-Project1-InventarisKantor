@@ -12,6 +12,7 @@ class AtkService
     public function __construct(
         private readonly AtkRepositoryInterface $atks,
         private readonly AssetCodeGenerator $codes,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function paginate(int $perPage): LengthAwarePaginator
@@ -23,7 +24,10 @@ class AtkService
     {
         $attributes['item_code'] = $this->codes->nextAtkCode();
 
-        return $this->atks->create($attributes);
+        $atk = $this->atks->create($attributes);
+        $this->activityLog->record('atk.created', Atk::class, $atk->id, $attributes);
+
+        return $atk;
     }
 
     public function update(int $id, array $attributes): Atk
@@ -32,6 +36,10 @@ class AtkService
             $atk = $this->atks->findForUpdate($id);
             $atk->fill($attributes);
             $this->atks->save($atk);
+            $this->activityLog->record('atk.updated', Atk::class, $atk->id, [
+                'before' => $atk->getOriginal(),
+                'after' => $attributes,
+            ]);
 
             return $atk;
         });
@@ -39,6 +47,11 @@ class AtkService
 
     public function delete(int $id): void
     {
-        $this->atks->delete($this->atks->find($id));
+        $atk = $this->atks->find($id);
+        $this->atks->delete($atk);
+        $this->activityLog->record('atk.deleted', Atk::class, $atk->id, [
+            'name' => $atk->name,
+            'item_code' => $atk->item_code,
+        ]);
     }
 }

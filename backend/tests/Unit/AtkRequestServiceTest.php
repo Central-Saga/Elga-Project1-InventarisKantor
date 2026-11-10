@@ -2,11 +2,13 @@
 
 namespace Tests\Unit;
 
+use App\Models\ActivityLog;
 use App\Models\Atk;
 use App\Models\AtkRequest;
 use App\Models\User;
 use App\Repositories\Contracts\AtkRepositoryInterface;
 use App\Repositories\Contracts\AtkRequestRepositoryInterface;
+use App\Services\ActivityLogService;
 use App\Services\AtkRequestService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -42,7 +44,10 @@ class AtkRequestServiceTest extends TestCase
             'status' => 'pending',
         ])->andReturn($createdRequest);
 
-        $result = (new AtkRequestService($atks, $requests))->create([
+        $activityLog = Mockery::mock(ActivityLogService::class);
+        $activityLog->shouldReceive('record')->once()->andReturn(new ActivityLog());
+
+        $result = (new AtkRequestService($atks, $requests, $activityLog))->create([
             'atk_id' => 4,
             'quantity' => 3,
         ], $user);
@@ -65,8 +70,11 @@ class AtkRequestServiceTest extends TestCase
         $requests = Mockery::mock(AtkRequestRepositoryInterface::class);
         $requests->shouldNotReceive('create');
 
+        $activityLog = Mockery::mock(ActivityLogService::class);
+        $activityLog->shouldNotReceive('record');
+
         try {
-            (new AtkRequestService($atks, $requests))->create(
+            (new AtkRequestService($atks, $requests, $activityLog))->create(
                 ['atk_id' => 4, 'quantity' => 3],
                 new User(['name' => 'Staff']),
             );
@@ -96,7 +104,10 @@ class AtkRequestServiceTest extends TestCase
                 $atk->stock += $amount;
             });
 
-        $result = (new AtkRequestService($atks, $requests))->updateStatus(8, 'rejected');
+        $activityLog = Mockery::mock(ActivityLogService::class);
+        $activityLog->shouldReceive('record')->once()->andReturn(new ActivityLog());
+
+        $result = (new AtkRequestService($atks, $requests, $activityLog))->updateStatus(8, 'rejected');
 
         $this->assertSame($request, $result);
         $this->assertSame(10, $atk->stock);
